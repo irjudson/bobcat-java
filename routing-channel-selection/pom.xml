@@ -28,8 +28,8 @@
 					</descriptorRefs>
 					<archive>
 						<manifest>
-							<mainClass>beamscheduling.Rcs</mainClass>
-							<packageName>beamscheduling</packageName>
+							<mainClass>jrcs.Rcs</mainClass>
+							<packageName>jrcs</packageName>
 						</manifest>
 					</archive>
 				</configuration>
@@ -43,8 +43,8 @@
 					</descriptorRefs>
 					<archive>
 						<manifest>
-							<mainClass>simulation.Driver</mainClass>
-							<packageName>simulation</packageName>
+							<mainClass>jrcs.Rcs</mainClass>
+							<packageName>jrcs</packageName>
 						</manifest>
 					</archive>
 				</configuration>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/bobcat.iml" filepath="$PROJECT_DIR$/bobcat.iml" />
+      <module fileurl="file://$PROJECT_DIR$/bobcatlib/bobcatlib.iml" filepath="$PROJECT_DIR$/bobcatlib/bobcatlib.iml" />
+      <module fileurl="file://$PROJECT_DIR$/beam-scheduling/bs.iml" filepath="$PROJECT_DIR$/beam-scheduling/bs.iml" />
+      <module fileurl="file://$PROJECT_DIR$/directional-antennas/da.iml" filepath="$PROJECT_DIR$/directional-antennas/da.iml" />
+      <module fileurl="file://$PROJECT_DIR$/routing-channel-selection/rcs.iml" filepath="$PROJECT_DIR$/routing-channel-selection/rcs.iml" />
+    </modules>
+  </component>
+</project>
+

@@ -1,4 +1,4 @@
-package simulation;
+package directionalantennas;
 
 import java.io.File;
 

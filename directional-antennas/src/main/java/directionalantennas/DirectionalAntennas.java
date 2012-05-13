@@ -1,7 +1,8 @@
-package simulation;
+package directionalantennas;
 
 import java.util.Random;
 import linear.*;
+import simulation.*;
 
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
@@ -24,7 +25,7 @@ public class DirectionalAntennas {
         KNearestNeighborsAlgorithm knn = null;
         MSTPlus mstPlus = null;
         
-        CmdLineOptions options = new CmdLineOptions();
+        DirectionalAntennasOptions options = new DirectionalAntennasOptions();
         CmdLineParser parser = new CmdLineParser(options);
         parser.setUsageWidth(80);
 

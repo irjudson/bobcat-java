@@ -23,8 +23,8 @@
 					</descriptorRefs>
 					<archive>
 						<manifest>
-							<mainClass>beamscheduling.App</mainClass>
-							<packageName>beamscheduling</packageName>
+                            <mainClass>simulation.DirectionalAntennas</mainClass>
+                            <packageName>simulation</packageName>
 						</manifest>
 					</archive>
 				</configuration>
@@ -38,7 +38,7 @@
 					</descriptorRefs>
 					<archive>
 						<manifest>
-							<mainClass>simulation.Driver</mainClass>
+							<mainClass>simulation.DirectionalAntennas</mainClass>
 							<packageName>simulation</packageName>
 						</manifest>
 					</archive>

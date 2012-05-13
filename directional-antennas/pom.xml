@@ -28,21 +28,13 @@
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-resources-plugin</artifactId>
-				<version>2.2</version>
-				<configuration>
-					<encoding>${project.build.sourceEncoding}</encoding>
-				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
 				<version>2.3.2</version>
 				<configuration>
 					<archive>
 						<manifest>
-							<mainClass>simulation.Driver</mainClass>
-							<packageName>simulation</packageName>
+							<mainClass>directionalantennas.DirectionalAntennas</mainClass>
+							<packageName>directionalantennas</packageName>
 						</manifest>
 						<manifestEntries>
 							<mode>development</mode>
@@ -60,8 +52,8 @@
 					</descriptorRefs>
 					<archive>
 						<manifest>
-							<mainClass>simulation.Driver</mainClass>
-							<packageName>simulation</packageName>
+                            <mainClass>directionalantennas.DirectionalAntennas</mainClass>
+                            <packageName>directionalantennas</packageName>
 						</manifest>
 					</archive>
 				</configuration>

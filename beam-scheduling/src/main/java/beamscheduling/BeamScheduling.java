@@ -22,7 +22,7 @@ public class BeamScheduling {
         HashMap subscribers;
         NetworkGenerator networkGenerator;
         Network network;
-        CmdLineOptions options = new CmdLineOptions();
+        BeamSchedulingOptions options = new BeamSchedulingOptions();
         CmdLineParser parser = new CmdLineParser(options);
         parser.setUsageWidth(80);
 

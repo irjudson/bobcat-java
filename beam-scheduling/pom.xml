@@ -23,7 +23,7 @@
 					</descriptorRefs>
 					<archive>
 						<manifest>
-							<mainClass>beamscheduling.App</mainClass>
+							<mainClass>beamscheduling.BeamScheduling</mainClass>
 							<packageName>beamscheduling</packageName>
 						</manifest>
 					</archive>
@@ -38,8 +38,8 @@
 					</descriptorRefs>
 					<archive>
 						<manifest>
-							<mainClass>simulation.Driver</mainClass>
-							<packageName>simulation</packageName>
+                            <mainClass>beamscheduling.BeamScheduling</mainClass>
+                            <packageName>beamscheduling</packageName>
 						</manifest>
 					</archive>
 				</configuration>
