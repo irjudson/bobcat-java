@@ -4,17 +4,17 @@
 							 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>org.irjudson</groupId>
+	<groupId>bobcat</groupId>
 	<artifactId>bobcat</artifactId>
 	<packaging>pom</packaging>
 	<version>1.0</version>
 	<name>Bobcat Wireless Network Simulation Toolkit</name>
 
 	<modules>
-		<module>bobcatlib</module>
-		<module>beam-scheduling</module>
-		<module>routing-channel-selection</module>
-		<module>directional-antennas</module>
+		<module>lib</module>
+		<module>beam_scheduling</module>
+		<module>routing_channel_selection</module>
+		<module>directional_antennas</module>
 	</modules>
 
 	<repositories>
