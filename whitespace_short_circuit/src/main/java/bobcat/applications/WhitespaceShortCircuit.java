@@ -250,41 +250,31 @@ public class WhitespaceShortCircuit {
                         e.weight = (1.0 + (dmax - d) / (dmax - dmin)) / 2.0;
                     }
 
-                    // DijkstraShortestPath<Vertex, Edge> dsp = new DijkstraShortestPath(network, wtTransformer, false);
-                    // List<Edge> dpath = dsp.getPath(source, destination);
-                    // if (dpath.size() == 0) {
-                    //     continue;
-                    // } else {
-                        // if (options.verbose) {
-                        //     System.out.println("Dijkstra Path: " + source + " -> " + destination + " : " + dpath.toString());
-                        // }
-
-                        try {
-                            cs = new ChannelSelection(network);
-                        } catch (ArrayIndexOutOfBoundsException e) {
-                            System.out.println("S: " + source + " D: " + destination);
-                        }
-
-                        // RCS
-                        PathChannelSet pcs = rcsPath(network, source, destination, options.consider);
-                        List<Edge> rcsPath = pcs.getPath();
-                        if (rcsPath == null) {
-                            rcsPath = new ArrayList<Edge>();
-                        }
-                        if (options.verbose) {
-                            System.out.println("RCS Path: " + source + " -> " + destination + rcsPath.toString());
-                        }
-                        if (options.display) {
-                            drawing.draw();
-                            for(Object e: rcsPath) {
-                                ((Edge)e).type = 0;
-                            }
-                        }
-
+                    try {
                         cs = new ChannelSelection(network);
-                        rcsThpt = cs.evalPathCS(rcsPath, pcs.getPathCS());
-                        rcsBisectionBandwidth[source.id][destination.id] = rcsThpt;
-                    // }
+                    } catch (ArrayIndexOutOfBoundsException e) {
+                        System.out.println("S: " + source + " D: " + destination);
+                    }
+
+                    // RCS
+                    PathChannelSet pcs = rcsPath(network, source, destination, options.consider);
+                    List<Edge> rcsPath = pcs.getPath();
+                    if (rcsPath == null) {
+                        rcsPath = new ArrayList<Edge>();
+                    }
+                    if (options.verbose) {
+                        System.out.println("RCS Path: " + source + " -> " + destination + rcsPath.toString());
+                    }
+                    if (options.display) {
+                        drawing.draw();
+                        for(Object e: rcsPath) {
+                            ((Edge)e).type = 0;
+                        }
+                    }
+
+                    cs = new ChannelSelection(network);
+                    rcsThpt = cs.evalPathCS(rcsPath, pcs.getPathCS());
+                    rcsBisectionBandwidth[source.id][destination.id] = rcsThpt;
                 }
             }
         }
@@ -303,7 +293,7 @@ public class WhitespaceShortCircuit {
         for(int i = 0; i < rcsBisectionBandwidth.length; i++) {
             System.out.print(i + " :");
             for(int j = 0; j < rcsBisectionBandwidth[i].length;j++) {
-                System.out.printf(" %09.2g", rcsBisectionBandwidth[i][j]);
+                System.out.printf(" %7.2g", rcsBisectionBandwidth[i][j]);
             }
             System.out.print("\n");
         }
