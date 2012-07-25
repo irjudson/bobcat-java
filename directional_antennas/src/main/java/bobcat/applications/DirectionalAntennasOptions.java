@@ -1,4 +1,4 @@
-package bobcat.algorithms;
+package bobcat.applications;
 
 import java.io.File;
 

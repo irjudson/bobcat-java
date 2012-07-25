@@ -5,7 +5,7 @@ import java.util.TreeSet;
 
 public class PathCS {
 
-    ArrayList<TreeSet<LinkChannel>> selected;
+    public ArrayList<TreeSet<LinkChannel>> selected;
     double throughput;
 
     PathCS() {

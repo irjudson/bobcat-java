@@ -24,7 +24,7 @@
 					</descriptorRefs>
 					<archive>
 						<manifest>
-                            <mainClass>bobcat.algorithms.BeamScheduling</mainClass>
+                            <mainClass>bobcat.applications.BeamScheduling</mainClass>
 						</manifest>
 					</archive>
 				</configuration>

@@ -6,7 +6,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 
-class Greedy2 {
+public class Greedy2 {
 
     Network network;
 

@@ -15,6 +15,7 @@
 		<module>beam_scheduling</module>
 		<module>routing_channel_selection</module>
 		<module>directional_antennas</module>
+		<module>whitespace_short_circuit</module>
 	</modules>
 
 	<repositories>

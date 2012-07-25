@@ -21,6 +21,7 @@ public class Network<V, E>
     public static int[] thetaSet = new int[1]; // Brendan added, for now just two theta kept
     public HashSet<Vertex>[][][] beamSet; // beamSet[i][k][l] = lth beam set for relay i, theta k
     public static int numChannels;
+    public static double channelProb;
     public Random random;
     public boolean[][][] interferes;
 
@@ -36,28 +37,30 @@ public class Network<V, E>
      * @param <V> the vertex type for the graph factory
      * @param <E> the edge type for the graph factory
      */
-    public static NetworkGenerator getGenerator(int numRelays, int numSubscribers, int sectors, double width, double height, long seed, int theta, double meanq, double slotlen, int channels) {
+    public static NetworkGenerator getGenerator(int numRelays, int numSubscribers, int sectors, double width, double height, long seed, int theta, double meanq, double slotlen, int channels, double prob) {
         NetworkGenerator gen = new NetworkGenerator(new NetworkFactory(width, height, theta, channels),
-                                                    new VertexFactory(width, height, sectors, meanq),
+                                                    new VertexFactory(width, height, sectors, meanq, seed),
                                                     new EdgeFactory(), numRelays, numSubscribers, width, height);
         gen.setSeed(seed);
         thetaSet[0] = theta;
         meanQueueLength = meanq;
         timeslotLength = slotlen;
         numChannels = channels;
+        channelProb = prob;
         return (gen);
     }
 
     public static NetworkGenerator getGenerator(int relays, int subscribers, 
                                                 double width, double height, 
-                                                long seed, int channels) {
+                                                long seed, int channels, double prob) {
         NetworkGenerator gen = new NetworkGenerator(new NetworkFactory(width, 
                                                                        height, 
                                                                        channels),
-                                                    new VertexFactory(width, height),
+                                                    new VertexFactory(width, height, seed),
                                                     new EdgeFactory(), relays, subscribers, width, height);
         gen.setSeed(seed);
         numChannels = channels;
+        channelProb = prob;
         return (gen);
     }
 
@@ -73,8 +76,6 @@ public class Network<V, E>
 
         for (int i = 0; i < relayList.length; i++) {
             Vertex relay = relayList[i];
-
-            //System.out.println("computing beam sets for relay " + i);
 
             for (int k = 0; k < this.thetaSet.length; k++) {
                 BearingSub[] sortedSubs = new BearingSub[numSubs];
@@ -96,9 +97,7 @@ public class Network<V, E>
                     int end;
                     end = start;
                     double endBearing = sortedSubs[end].bearing;
-                    //System.out.println("start bearing: " + sortedSubs[start].bearing);
                     while (endBearing - sortedSubs[start].bearing <= this.thetaSet[k]) {
-                        //System.out.println("end bearing: " + sortedSubs[end].bearing);
                         nextSet.add(sortedSubs[end].sub);
                         end = (end + 1) % sortedSubs.length;
                         if (end == start)
@@ -110,7 +109,6 @@ public class Network<V, E>
                     }
                     if (tmp.isEmpty() || !tmp.get(tmp.size() - 1).containsAll(nextSet)) {
                         tmp.add(nextSet);
-                        //System.out.println("beamSet[" + i + "][" + k + "] adding " + nextSet);
                     }
                 }
                 this.beamSet[i][k] = tmp.toArray(this.beamSet[i][k]);

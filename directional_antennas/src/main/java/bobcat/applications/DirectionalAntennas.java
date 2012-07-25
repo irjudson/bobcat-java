@@ -1,10 +1,11 @@
-package bobcat.algorithms;
+package bobcat.applications;
 
 import java.util.Random;
 
 import bobcat.linear.*;
 import bobcat.simulation.*;
-
+import bobcat.algorithms.MinimumSpanningTree;
+import bobcat.algorithms.KNearestNeighbors;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 

@@ -1,4 +1,4 @@
-package bobcat.algorithms;
+package bobcat.applications;
 
 import org.kohsuke.args4j.Option;
 
@@ -44,5 +44,8 @@ public class BeamSchedulingOptions {
   @Option(name = "-k", aliases = {"--channels"}, metaVar = "CHANNELS",
           usage = "Specify the number of channels available at each relay.")
     public int channels = 4;
-    
+
+  @Option(name = "-p", aliases = {"--channelProb"}, metaVar = "CHANNELPROB",
+         usage = "Specify the availability probability of each of channel.")
+    public double channelProb  = 0.3;
 }

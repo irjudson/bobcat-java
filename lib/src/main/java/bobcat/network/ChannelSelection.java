@@ -24,8 +24,6 @@ public class ChannelSelection {
     // bridging sets
     TreeSet<LinkChannel>[] bridgingSet;
     int[] numBridgingSubsets;
-    // Optimal
-    public PathCS optimalPathCS;
     // best PathCS
     PathCS[][] bestPathCS; // bestPathCS[i][k] = best PathCS for 1,..,i given kth bridging set
 
@@ -79,7 +77,7 @@ public class ChannelSelection {
 
         long numSubSets = twoExp(bridgingSet[i].size());
         if (numSubSets > Integer.MAX_VALUE) {
-            System.out.println("bridging set too large, exiting...");
+            System.err.println("bridging set too large, exiting...");
             System.exit(-1);
         }
         numBridgingSubsets[i] = (int) numSubSets;
@@ -189,7 +187,6 @@ public class ChannelSelection {
         }
 
         if (optPathCS != null) {
-            optimalPathCS = optPathCS;
             return optPathCS.throughput;
         }
         return 0.0;
@@ -267,8 +264,7 @@ public class ChannelSelection {
         pathCS.throughput = Math.min(pathCS.throughput, linkThpt);
     }
 
-    int findMaxCliqueContaining(ArrayList<Integer> linkNums, int loc,
-            int channel) {
+    int findMaxCliqueContaining(ArrayList<Integer> linkNums, int loc, int channel) {
         // assumes interval graph
         int maxSize = 0;
         int i = 0;
@@ -279,7 +275,7 @@ public class ChannelSelection {
                     linkNums.get(j))) {
                 j++;
             }
-            int size = j - i;
+            int size = j - i + 1;
             if (i <= loc && loc <= j && size > maxSize) {
                 maxSize = size;
             }
@@ -369,7 +365,7 @@ public class ChannelSelection {
         return greedyPathCS.throughput;
     }
 
-    // evaluate a path and channel selection (for RCS idea #2)
+    // evaluate a path and channel selection
     public double evalPathCS(List<Edge> pathList, PathCS testPathCS) {
 
         pathLen = pathList.size();
@@ -381,7 +377,7 @@ public class ChannelSelection {
         }
 
         if (testPathCS == null) {
-            testPathCS = new PathCS();
+            return 0.0;
         }
 
         for (int i = 0; i < pathLen; i++) {
@@ -410,31 +406,18 @@ public class ChannelSelection {
             for (LinkChannel lc : testPathCS.selected.get(i)) {
                 int c = lc.channel;
                 ArrayList<Integer> linkNums = new ArrayList();
-                for (int j = 0; j < i; j++) {
+                for (int j = 0; j < pathLen; j++) {
                     LinkChannel lcTest = new LinkChannel(j, c);
                     if (testPathCS.selected.get(j).contains(lcTest)) {
                         linkNums.add(j);
                     }
                 }
-                linkNums.add(i);
-                for (int j = i + 1; j < pathLen; j++) {
-                    LinkChannel lcTest = new LinkChannel(j, c);
-                    if (testPathCS.selected.get(j).contains(lcTest)) {
-                        linkNums.add(j);
-                    }
-                }
-                int maxChanClqSize = Math.max(maxCliqueSize,
-                        findMaxCliqueContaining(linkNums,
-                        i, c));
+                int maxChanClqSize = Math.max(maxCliqueSize, findMaxCliqueContaining(linkNums, i, c));
                 linkThpt += path[i].channels[c] / maxChanClqSize;
             }
             testPathCS.throughput = Math.min(testPathCS.throughput, linkThpt);
         }
-        this.optimalPathCS = testPathCS;
-        
-        
-        //System.out.println("evaluated " + pathList + " cs " + testPathCS);
-        
+
         return testPathCS.throughput;
     }
 }

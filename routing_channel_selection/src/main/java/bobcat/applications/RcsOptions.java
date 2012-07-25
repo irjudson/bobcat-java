@@ -1,5 +1,6 @@
-package bobcat.algorithms;
+package bobcat.applications;
 
+import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 
 public class RcsOptions {
@@ -29,6 +30,10 @@ public class RcsOptions {
          usage = "Specify the number of channels available for each frequency.")
     public int channels = 3;
 
+  @Option(name = "-p", aliases = {"--channelProb"}, metaVar = "CHANNELPROB",
+         usage = "Specify the availability probability of each of channel.")
+    public double channelProb  = 0.3;
+
   @Option(name = "-d", aliases = {"--display"}, metaVar = "DISPLAY",
           usage = "Draw the graphs in a window.")
     public Boolean display = false;
@@ -39,9 +44,9 @@ public class RcsOptions {
 
   @Option(name = "-i", aliases = {"--iterations"}, metaVar = "ITER",
           usage = "average over specified number of iterations.")
-    public Integer iter = 10;
+    public Integer iter = 1;
 
   @Option(name = "-r", aliases = {"--rcs"}, metaVar = "RCS",
           usage = "Consider the best N paths in RCS calcuations.")
-    public Integer consider = 50;
+    public Integer consider = 10;
 }

@@ -23,7 +23,7 @@
 					</descriptorRefs>
 					<archive>
 						<manifest>
-                            <mainClass>bobcat.algorithms.DirectionalAntennas</mainClass>
+                            <mainClass>bobcat.applications.DirectionalAntennas</mainClass>
    						</manifest>
 					</archive>
 				</configuration>

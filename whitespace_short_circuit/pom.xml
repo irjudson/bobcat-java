@@ -2,16 +2,15 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-
 	<parent>
-		<groupId>bobcat</groupId>
+	<groupId>org.irjudson</groupId>
 		<artifactId>bobcat</artifactId>
 		<version>1.0</version>
 	</parent>
 
-	<artifactId>routing_channel_selection</artifactId>
+	<artifactId>whitespace_short_circuit</artifactId>
 	<packaging>jar</packaging>
-	<name>Routing and Channel Selection</name>
+	<name>Whitespace Short Circuit</name>
 	<version>1.0</version>
 
 	<build>
@@ -25,8 +24,8 @@
 					</descriptorRefs>
 					<archive>
 						<manifest>
-							<mainClass>bobcat.applications.Rcs</mainClass>
-                        </manifest>
+                            <mainClass>bobcat.applications.WhitespaceShortCircuit</mainClass>
+						</manifest>
 					</archive>
 				</configuration>
 				<executions>
