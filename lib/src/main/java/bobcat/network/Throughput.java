@@ -12,9 +12,27 @@ public class Throughput {
     private int beamsNumber;
     private double lambda;
 
+    /**
+    *
+    * @param beams is the number of beams in the antenna
+    *
+    **/
     public Throughput(int beams) {
         this.beamsNumber = beams;
-        lambda = c / frequency;
+        this.lambda = c / frequency;
+    }
+
+    /**
+    *
+    * @param beams is the number of beams in the antenna
+    * @param receiverGain is the gain of the receiving antenna
+    * @param frequency is the frequency being used
+    **/
+    public Throughput(int beams, double receiverGain, double frequency) {
+      this.gainReceiver = Math.pow(10, receiverGain / 10);
+      this.frequency = frequency * Math.pow(10, 9);
+      this.beamsNumber = beams;
+      this.lambda = this.c / this.frequency;
     }
 
     /**

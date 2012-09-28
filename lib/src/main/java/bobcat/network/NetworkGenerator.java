@@ -102,6 +102,8 @@ public class NetworkGenerator<V, E> implements GraphGenerator<V, E> {
                         }
 
                         // Calculate throughput for each active channel
+                        // 700 MHz (900 instead?), 2.4GHz, or 5.8GHz
+                        // TODO: Add in TVWS Frequencies?
                         int freq = -1;
                         for (int i = 0; i < network.numChannels * 3; i++) {
                             if (i % network.numChannels == 0) {
@@ -146,10 +148,10 @@ public class NetworkGenerator<V, E> implements GraphGenerator<V, E> {
                     }
                 }
             }
-        }
+        } 
 
+        // This is the conflict graph
         network.interferes = new boolean[network.getEdgeCount() + 1][network.getEdgeCount() + 1][network.numChannels * 3 + 1];
-
 
         Vector junk = new Vector();
         for (Vertex v : network.relayList) {
