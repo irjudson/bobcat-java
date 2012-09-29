@@ -25,6 +25,11 @@ public class Edge {
         this.type = 0;
     }
 
+    public int setId(int id) {
+        this.id = id;
+        return id;
+    }
+
     public double bottleNeckCapacity() {
         double sum = 0.0d;
         for (int i = 0; i < channels.length; i++) {

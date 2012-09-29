@@ -238,6 +238,14 @@ public class WhitespaceShortCircuit {
             network.removeEdge((Edge)e);
         }
 
+        // Renumber edges
+        int eid = 0;
+        for (Object o: network.getEdges()) {
+            Edge e = (Edge)o;
+            e.setId(eid);
+            eid += 1;
+        }
+
         // go over all the nxn nodes and find the throughput using rcs
         for (Object o : network.getVertices()) {
             Vertex source = (Vertex) o;
@@ -247,57 +255,6 @@ public class WhitespaceShortCircuit {
                     DijkstraShortestPath<Vertex,Edge> dspath = new DijkstraShortestPath(primTree);
                     List<Edge> spath = dspath.getPath(source, destination);
                     System.out.println(source + " -> " + destination + " : " + spath);
-
-                    // // Find dmax and dmin
-                    // double dmin = Double.MAX_VALUE, dmax = Double.MIN_VALUE;
-                    // for (Object e1 : network.getEdges()) {
-                    //     Pair<Object> ends = network.getEndpoints(e1);
-                    //     Vertex a = (Vertex) ends.getFirst();
-                    //     Vertex b = (Vertex) ends.getSecond();
-                    //     double ad = (a.distanceTo(source) + b.distanceTo(destination)) / 2.0;
-                    //     if (ad < dmin) {
-                    //         dmin = ad;
-                    //     }
-                    //     if (ad > dmax) {
-                    //         dmax = ad;
-                    //     }
-                    // }
-
-                    // // Compute weights for the edges
-                    // for (Object e1 : network.getEdges()) {
-                    //     Edge e = (Edge) e1;
-                    //     Pair<Object> ends = network.getEndpoints(e1);
-                    //     Vertex a = (Vertex) ends.getFirst();
-                    //     Vertex b = (Vertex) ends.getSecond();
-                    //     double d = (a.distanceTo(source) + b.distanceTo(destination)) / 2.0;
-                    //     e.weight = (1.0 + (dmax - d) / (dmax - dmin)) / 2.0;
-                    // }
-
-                    // try {
-                    //     cs = new ChannelSelection(network);
-                    // } catch (ArrayIndexOutOfBoundsException e) {
-                    //     System.out.println("S: " + source + " D: " + destination);
-                    // }
-
-                    // // RCS
-                    // PathChannelSet pcs = rcsPath(network, source, destination, options.consider);
-                    // List<Edge> rcsPath = pcs.getPath();
-                    // if (rcsPath == null) {
-                    //     rcsPath = new ArrayList<Edge>();
-                    // }
-                    // if (options.verbose) {
-                    //     System.out.println("RCS Path: " + source + " -> " + destination + rcsPath.toString());
-                    // }
-                    // if (options.display) {
-                    //     drawing.draw();
-                    //     for(Object e: rcsPath) {
-                    //         ((Edge)e).type = 0;
-                    //     }
-                    // }
-
-                    // cs = new ChannelSelection(network);
-                    // rcsThpt = cs.evalPathCS(rcsPath, pcs.getPathCS());
-                    // rcsBisectionBandwidth[source.id][destination.id] = rcsThpt;
                 }
             }
         }
@@ -359,6 +316,45 @@ public class WhitespaceShortCircuit {
         // Build ILP
         try {
             IloCplex cplex = new IloCplex();
+
+            // Variable Definitions for ILP
+            // c
+            IloIntVar [] c = new IloIntVar[network.numChannels * 3 + 1]; 
+            for(int i = 0; i < network.numChannels * 3 + 1; i++) {
+                c[i] = cplex.intVar(0,1, "c("+i+")");
+            }
+
+            // x
+            IloIntVar[][][] x = new IloIntVar[network.getEdgeCount()][network.numChannels*3+1][network.getEdgeCount()];
+            for(Object o: network.getEdges()) {
+                Edge e = (Edge)o;
+                for(int k = 0; k <  network.numChannels*3+1; k++) {
+                    for(int tc = 0; tc < network.getEdgeCount(); tc++) {
+                        x[e.id][k][tc] = cplex.intVar(0,1, "x("+e.id+")("+k+")("+tc+")");
+                    }
+                }
+            }
+
+            // D
+            IloNumVar[][][] D = new IloNumVar[network.getEdgeCount()][network.numChannels*3+1][network.getEdgeCount()];
+            for(Object o: network.getEdges()) {
+                Edge e = (Edge)o;
+                for(int k = 0; k < network.numChannels*3+1; k++) {
+                    for(int tc = 0; tc < network.getEdgeCount(); tc++) {
+                        D[e.id][k][tc] = cplex.numVar(0,1, "D("+e.id+")("+k+")("+tc+")");
+                    }
+                }
+            }
+
+            // y
+            IloIntVar[][] y = new IloIntVar[network.getEdgeCount()][network.numChannels*3+1];
+            for(Object o: network.getEdges()) {
+                Edge e = (Edge)o;
+                for(int k = 0; k <  network.numChannels*3+1; k++) {
+                    y[e.id][k] = cplex.intVar(0,1, "y("+e.id+")("+k+")");
+                }
+            }
+
             // Objective function in Equation 3 - Minimize Overall Channel Costs
             IloLinearNumExpr cost = cplex.linearNumExpr();
 
@@ -371,13 +367,13 @@ public class WhitespaceShortCircuit {
                 channel_costs[k] = 1.0;
             }
 
-            // Equation 1 + Equation 3
+            // Equation 3: Minimize channel costs (This is the objective)
             // Channel usage array (Number of edges * number of channels per edge)
             for(Object o: network.getEdges()) {
                 Edge e = (Edge)o;
                 for (int k = 0; k < e.channels.length; k++) {
                     if (e.channels[k] > 0.0) {
-                        cost.addTerm(channel_costs[k], cplex.intVar(0,1, "c("+e.id+")("+k+")"));
+                        cost.addTerm(channel_costs[k], c[k]);
                     }
                 }
             }
@@ -385,7 +381,7 @@ public class WhitespaceShortCircuit {
             cplex.add(objective);
 
             // Subject to Constraints
-            // Equation 4
+            // Equation 4: Variable x contains max, clique, channel activation status
             // The largest clique (in theory) would include all edges, therefore the size
             int max_id = 0;
             for(Object o: network.getEdges()) {
@@ -394,35 +390,43 @@ public class WhitespaceShortCircuit {
                     max_id = e.id;
                 }
             }
-            IloIntVar[][][] x = new IloIntVar[max_id+1][network.numChannels*3+1][network.getEdgeCount()+1];
-
+            int[][] max_cliques = new int[max_id+1][network.numChannels*3+1];
             for(Object o: network.getEdges()) {
                 Edge e = (Edge)o;
                 for(int k = 0; k < e.channels.length; k++) {
                     // Find max clique involving (e_ik, c)
                     HashSet channel_cliques = (HashSet)clique_list.get(k);
                     int max_clique = findMaxClique(channel_cliques, e.id);
-                    for(int c = 0; c < network.getEdgeCount(); c++) {
-                        x[e.id][k][c] = cplex.intVar(0,1, "x("+e.id+")("+k+")("+c+")");
-                        if (c == max_clique && e.channels[k] > 0.0) {
-                            cplex.addEq(1, x[e.id][k][c]);
+                    for(int tc = 0; tc < network.getEdgeCount(); tc++) {
+                        x[e.id][k][tc] = cplex.intVar(0,1, "x("+e.id+")("+k+")("+tc+")");
+                        if (tc == max_clique && e.channels[k] > 0.0) {
+                            cplex.addEq(1, x[e.id][k][tc]);
+                            max_cliques[e.id][k] = tc;
                         } else {
-                            cplex.addEq(0, x[e.id][k][c]);
+                            cplex.addEq(0, x[e.id][k][tc]);
                         }
                     }
                 }
             }
 
-            // Equation 5
-            // float[][][] D = float[network.getEdgeCount()][network.numChannels][network.getEdgeCount()];
+            // Equation 5: break up capacity by clique size
+            for(Object o: network.getEdges()) {
+                Edge e = (Edge)o;
+                for(int k = 0; k < network.numChannels*3+1; k++) {
+                    for(int tc = 0; tc < network.getEdgeCount(); tc++) {
+                        // D[e.id][k][tc] = e.channels[k] / tc;
+                        cplex.addEq(e.channels[k]/tc, D[e.id][k][tc]);
+                    }
+                }
+            }
 
-            // Equation 6
+            // Equation 6:
 
-            // Equation 7
+            // Equation 7: 
 
-            // Equation 8
+            // Equation 8: 
 
-            // Equation 9
+            // Equation 9: Total capacity constraint
             
             // Write the model out to validate
             cplex.exportModel("JRCS-TVWS.lp");
@@ -435,6 +439,7 @@ public class WhitespaceShortCircuit {
         } catch (IloException e) {
             System.err.println("Concert exception '" + e + "' caught.");
         }
+        
         // Show graph
         if (options.display) {
             drawing = new Draw(network, 1024, 768,
