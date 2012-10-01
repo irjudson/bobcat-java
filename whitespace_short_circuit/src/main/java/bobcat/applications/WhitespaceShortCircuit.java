@@ -147,6 +147,75 @@ public class WhitespaceShortCircuit {
         return(max);
     }
 
+    public static Boolean grows_clique(Vector clique, Edge edge, Network network, int channel) {
+        for(Object o: clique) {
+            Edge e = (Edge)o;
+            if (clique.contains(edge)) {
+                return(false);
+            }
+            if (! network.interferes[e.id][edge.id][channel]) {
+                return(false);
+            }
+        }
+        return(true);
+    }
+
+    public static HashMap enumerate_cliques(Network network) {
+        HashMap clique_list = new HashMap();
+
+        // For each edge
+        for (Object o : network.getEdges()) {
+            Edge e = (Edge)o;
+            HashMap edge_cliques = new HashMap();
+            // For each channel
+            for(int k = 0; k < network.numChannels * 3 + 1; k++) {
+                Vector[] cliques = new Vector[network.getEdgeCount()];
+                Vector clique = new Vector();
+
+                // Clique of size 1
+                clique.add(e);
+
+                // Every edge is a clique of size 1, and there's only one
+                cliques[1] = new Vector();
+                cliques[1].add(clique.clone());
+
+                // Check all sizes up to max
+                for(int i = 2; i < network.getEdgeCount(); i++) {
+                    cliques[i] = new Vector();
+
+                    // For each clique of the size i-1
+                    for(Object p: cliques[i-1]) {
+                        clique = (Vector)p;
+
+                        // Check to see if adding an edge will grow them
+                        for(Object q: network.getEdges()) {
+                            Edge edge = (Edge)q;
+
+                            // If it grows the clique
+                            if (grows_clique(clique, edge, network, k)) {
+
+                                // Add the edge
+                                clique.add(edge);
+
+                                // Store a copy under this size list
+                                cliques[i].add(clique.clone());
+
+                                // Remove the edge
+                                clique.remove(edge);
+                            }
+                        }
+                    }
+                }
+
+                // store cliques
+                edge_cliques.put(k, cliques);
+            }
+            // roll out of the loop, storing results
+            clique_list.put(e.id, edge_cliques);
+        }
+        return(clique_list);        
+    }
+
     public static void main(String[] args) {
         NetworkGenerator networkGenerator;
         Network network;
@@ -275,40 +344,21 @@ public class WhitespaceShortCircuit {
         // }
 
         // Initialize a hash of cliques by channel, the value is a set so we don't get duplicates
-        HashMap clique_list = new HashMap();
-        for(int k = 0; k < network.numChannels * 3 + 1; k++) {
-            clique_list.put(k, new HashSet());
-        }
-        // Enumerate cliques - There are duplicates this way, but the storage eliminates them
-        for(int i = 0; i < network.getEdgeCount() + 1; i++) {
-            Vector clique = new Vector();
-            for(int k = 0; k < network.numChannels * 3 + 1; k++) {
-                HashSet channel_cliques = (HashSet)clique_list.get(k);
-                for(int j = 0; j < network.getEdgeCount() + 1; j++) {
-                    if(network.interferes[i][j][k]) {
-                        clique.addElement(j);
-                    }
-                }
-                if(clique.size() > 0) {  
-                    clique.addElement(i);        
-                    if(clique.size() > network.getEdgeCount()) {
-                        System.out.println("*********** ERROR ************");
-                    }
-                    channel_cliques.add(new HashSet(clique));
-                    clique.removeAllElements(); 
-                }
-                clique_list.put(k, channel_cliques);
-            }
-        }
+        // indexed by edge, then channel, then a list of cliques
+        HashMap clique_list = enumerate_cliques(network);
 
         //Print out all cliques to make sure we're good
-        for(int k = 0; k < network.numChannels * 3 + 1; k++) {
-            System.out.println("Cliques for channel " + k + ":");
-            HashSet cliques = (HashSet)clique_list.get(k);
-            for (Object c : cliques) {
-                HashSet clique = (HashSet)c;
-                System.out.print("\t[" + clique.size() + "] ");
-                System.out.println(clique);
+        for(Object o: network.getEdges()) {
+            Edge e = (Edge)o;
+            for(int k = 0; k < network.numChannels * 3 + 1; k++) {
+                
+                System.out.println("Cliques involving Edge: " + e + " using channel " + k + ":");
+                HashSet cliques = (HashSet)clique_list.get(k);
+                for (Object c : cliques) {
+                    HashSet clique = (HashSet)c;
+                    System.out.print("\t[" + clique.size() + "] ");
+                    System.out.println(clique);
+                }
             }
         }
 
@@ -383,42 +433,42 @@ public class WhitespaceShortCircuit {
             // Subject to Constraints
             // Equation 4: Variable x contains max, clique, channel activation status
             // The largest clique (in theory) would include all edges, therefore the size
-            int max_id = 0;
-            for(Object o: network.getEdges()) {
-                Edge e = (Edge)o;
-                if (e.id > max_id) {
-                    max_id = e.id;
-                }
-            }
-            int[][] max_cliques = new int[max_id+1][network.numChannels*3+1];
-            for(Object o: network.getEdges()) {
-                Edge e = (Edge)o;
-                for(int k = 0; k < e.channels.length; k++) {
-                    // Find max clique involving (e_ik, c)
-                    HashSet channel_cliques = (HashSet)clique_list.get(k);
-                    int max_clique = findMaxClique(channel_cliques, e.id);
-                    for(int tc = 0; tc < network.getEdgeCount(); tc++) {
-                        x[e.id][k][tc] = cplex.intVar(0,1, "x("+e.id+")("+k+")("+tc+")");
-                        if (tc == max_clique && e.channels[k] > 0.0) {
-                            cplex.addEq(1, x[e.id][k][tc]);
-                            max_cliques[e.id][k] = tc;
-                        } else {
-                            cplex.addEq(0, x[e.id][k][tc]);
-                        }
-                    }
-                }
-            }
+            // int max_id = 0;
+            // for(Object o: network.getEdges()) {
+            //     Edge e = (Edge)o;
+            //     if (e.id > max_id) {
+            //         max_id = e.id;
+            //     }
+            // }
+            // int[][] max_cliques = new int[max_id+1][network.numChannels*3+1];
+            // for(Object o: network.getEdges()) {
+            //     Edge e = (Edge)o;
+            //     for(int k = 0; k < e.channels.length; k++) {
+            //         // Find max clique involving (e_ik, c)
+            //         HashSet channel_cliques = (HashSet)clique_list.get(k);
+            //         int max_clique = findMaxClique(channel_cliques, e.id);
+            //         for(int mc = 1; mc < network.getEdgeCount(); mc++) {
+            //             x[e.id][k][mc] = cplex.intVar(0,1, "x("+e.id+")("+k+")("+mc+")");
+            //             if (mc == max_clique && e.channels[k] > 0.0) {
+            //                 cplex.addEq(1, x[e.id][k][mc]);
+            //                 max_cliques[e.id][k] = mc;
+            //             } else {
+            //                 cplex.addEq(0, x[e.id][k][mc]);
+            //             }
+            //         }
+            //     }
+            // }
 
             // Equation 5: break up capacity by clique size
-            for(Object o: network.getEdges()) {
-                Edge e = (Edge)o;
-                for(int k = 0; k < network.numChannels*3+1; k++) {
-                    for(int tc = 0; tc < network.getEdgeCount(); tc++) {
-                        // D[e.id][k][tc] = e.channels[k] / tc;
-                        cplex.addEq(e.channels[k]/tc, D[e.id][k][tc]);
-                    }
-                }
-            }
+            // for(Object o: network.getEdges()) {
+            //     Edge e = (Edge)o;
+            //     for(int k = 0; k < network.numChannels*3+1; k++) {
+            //         for(int mc = 1; mc < network.getEdgeCount(); mc++) {
+            //             D[e.id][k][mc] = e.channels[k] / mc;
+            //             cplex.addEq(e.channels[k]/tc, D[e.id][k][tc]);
+            //         }
+            //     }
+            // }
 
             // Equation 6:
 

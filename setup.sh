@@ -13,7 +13,7 @@ export JLPATH="${CPLEXPATH}/cplex/bin/${CPLEXARCH}:${CPLEXPATH}/lib:${CPLEXPATH}
 
 # Setting Java Options
 JAVA_OPTIONS="-Djava.library.path=${JLPATH} -Xmx4096m"
-export JAVA_OPTIONS="-Djava.library.path=${JLPATH} -Xmx2048m"
+export JAVA_OPTIONS="-Djava.library.path=${JLPATH} -Xmx4096m"
 
 alias java='java $JAVA_OPTIONS'
 alias wsc='cd $BOBCAT_HOME; java -jar whitespace_short_circuit/target/whitespace_short_circuit-1.0-jar-with-dependencies.jar'
