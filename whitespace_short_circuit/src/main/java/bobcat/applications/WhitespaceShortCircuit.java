@@ -169,7 +169,7 @@ public class WhitespaceShortCircuit {
             HashMap edge_cliques = new HashMap();
             // For each channel
             for(int k = 0; k < network.numChannels * 3 + 1; k++) {
-                Vector[] cliques = new Vector[network.getEdgeCount()];
+                Vector[] cliques = new Vector[4];
                 Vector clique = new Vector();
 
                 // Clique of size 1
@@ -180,7 +180,7 @@ public class WhitespaceShortCircuit {
                 cliques[1].add(clique.clone());
 
                 // Check all sizes up to max
-                for(int i = 2; i < network.getEdgeCount(); i++) {
+                for(int i = 2; i < 4; i++) {
                     cliques[i] = new Vector();
 
                     // For each clique of the size i-1
@@ -197,6 +197,7 @@ public class WhitespaceShortCircuit {
                                 // Add the edge
                                 clique.add(edge);
 
+                                // System.out.println("------- (# Edges: " + network.getEdgeCount() + ") Clique Size: " + clique.size());
                                 // Store a copy under this size list
                                 cliques[i].add(clique.clone());
 
@@ -350,14 +351,16 @@ public class WhitespaceShortCircuit {
         //Print out all cliques to make sure we're good
         for(Object o: network.getEdges()) {
             Edge e = (Edge)o;
+            HashMap edge_cliques = (HashMap)clique_list.get(e.id);
             for(int k = 0; k < network.numChannels * 3 + 1; k++) {
-                
-                System.out.println("Cliques involving Edge: " + e + " using channel " + k + ":");
-                HashSet cliques = (HashSet)clique_list.get(k);
-                for (Object c : cliques) {
-                    HashSet clique = (HashSet)c;
-                    System.out.print("\t[" + clique.size() + "] ");
-                    System.out.println(clique);
+                System.out.println("Cliques involving Edge: " + e.id + " using channel " + k + ":");
+                Vector[] cliques = (Vector[])edge_cliques.get(k);
+                for (Object c: cliques) {
+                    Vector clique = (Vector)c;
+                    if (clique != null) {
+                        System.out.print("\t[" + clique.size() + "] ");
+                        System.out.println(clique);
+                    }
                 }
             }
         }
