@@ -147,13 +147,24 @@ public class WhitespaceShortCircuit {
         return(max);
     }
 
-    public static Boolean grows_clique(Vector clique, Edge edge, Network network, int channel) {
+    public static Boolean grows_clique(HashSet clique, Edge edge, Network network, int channel) {
+
+        if (clique.size() > network.getEdgeCount()) {
+            return(false);
+        }
+ 
+        if (edge.channels[channel] == 0.0d) {
+            return(false);
+        }
+
         for(Object o: clique) {
             Edge e = (Edge)o;
-            if (clique.contains(edge)) {
+
+            if (e.id == edge.id) {
                 return(false);
             }
-            if (! network.interferes[e.id][edge.id][channel]) {
+
+            if ((! network.interferes[e.id][edge.id][channel]) && (!network.interferes[edge.id][e.id][channel])) {
                 return(false);
             }
         }
@@ -162,30 +173,37 @@ public class WhitespaceShortCircuit {
 
     public static HashMap enumerate_cliques(Network network) {
         HashMap clique_list = new HashMap();
+        HashSet clique = new HashSet();
 
         // For each edge
         for (Object o : network.getEdges()) {
             Edge e = (Edge)o;
             HashMap edge_cliques = new HashMap();
             // For each channel
-            for(int k = 0; k < network.numChannels * 3 + 1; k++) {
-                Vector[] cliques = new Vector[4];
-                Vector clique = new Vector();
+            for(int k = 0; k < network.numChannels * 3; k++) {
+                HashMap size_cliques = new HashMap();
+                HashSet cliques = new HashSet();
+                clique.clear();
 
-                // Clique of size 1
-                clique.add(e);
+                // Clique of size 1, if it's using channel k
+                if(e.channels[k] > 0.0) {
+                    clique.add(e);  
+                }
 
-                // Every edge is a clique of size 1, and there's only one
-                cliques[1] = new Vector();
-                cliques[1].add(clique.clone());
+                // Every edge is a clique of size 1, and there's only one clique of size 1
+                if (clique.size() > 0) {
+                    cliques.add(clique.clone());
+                }
+                size_cliques.put(1,cliques.clone());
 
                 // Check all sizes up to max
-                for(int i = 2; i < 4; i++) {
-                    cliques[i] = new Vector();
+                for(int i = 2; i < 5; i++) {
+                    // Clear all cliques from the size list
+                    cliques.clear();
 
                     // For each clique of the size i-1
-                    for(Object p: cliques[i-1]) {
-                        clique = (Vector)p;
+                    for(Object p: (HashSet)size_cliques.get(i-1)) {
+                        clique = (HashSet)p;
 
                         // Check to see if adding an edge will grow them
                         for(Object q: network.getEdges()) {
@@ -197,22 +215,22 @@ public class WhitespaceShortCircuit {
                                 // Add the edge
                                 clique.add(edge);
 
-                                // System.out.println("------- (# Edges: " + network.getEdgeCount() + ") Clique Size: " + clique.size());
                                 // Store a copy under this size list
-                                cliques[i].add(clique.clone());
+                                cliques.add(clique.clone());
 
                                 // Remove the edge
                                 clique.remove(edge);
                             }
                         }
                     }
+                    size_cliques.put(i, cliques.clone());
                 }
 
                 // store cliques
-                edge_cliques.put(k, cliques);
+                edge_cliques.put(k, size_cliques.clone());
             }
             // roll out of the loop, storing results
-            clique_list.put(e.id, edge_cliques);
+            clique_list.put(e.id, edge_cliques.clone());
         }
         return(clique_list);        
     }
@@ -352,15 +370,15 @@ public class WhitespaceShortCircuit {
         for(Object o: network.getEdges()) {
             Edge e = (Edge)o;
             HashMap edge_cliques = (HashMap)clique_list.get(e.id);
-            for(int k = 0; k < network.numChannels * 3 + 1; k++) {
+            for(int k = 0; k < network.numChannels * 3; k++) {
                 System.out.println("Cliques involving Edge: " + e.id + " using channel " + k + ":");
-                Vector[] cliques = (Vector[])edge_cliques.get(k);
-                for (Object c: cliques) {
-                    Vector clique = (Vector)c;
-                    if (clique != null) {
-                        System.out.print("\t[" + clique.size() + "] ");
-                        System.out.println(clique);
-                    }
+                // Keys are size, values are a list of cliques of that size
+                HashMap cliques_of_size_key = (HashMap)edge_cliques.get(k);
+                for(Object t: cliques_of_size_key.keySet()) {
+                    Integer size = (Integer)t;
+                    HashSet n_cliques = (HashSet)cliques_of_size_key.get(size);
+                    System.out.print("\t[ Size: " + size + " #: "+ n_cliques.size() + "] ");
+                    System.out.println(n_cliques);
                 }
             }
         }
@@ -372,8 +390,8 @@ public class WhitespaceShortCircuit {
 
             // Variable Definitions for ILP
             // c
-            IloIntVar [] c = new IloIntVar[network.numChannels * 3 + 1]; 
-            for(int i = 0; i < network.numChannels * 3 + 1; i++) {
+            IloIntVar [] c = new IloIntVar[network.numChannels * 3]; 
+            for(int i = 0; i < network.numChannels * 3; i++) {
                 c[i] = cplex.intVar(0,1, "c("+i+")");
             }
 
@@ -381,7 +399,7 @@ public class WhitespaceShortCircuit {
             IloIntVar[][][] x = new IloIntVar[network.getEdgeCount()][network.numChannels*3+1][network.getEdgeCount()];
             for(Object o: network.getEdges()) {
                 Edge e = (Edge)o;
-                for(int k = 0; k <  network.numChannels*3+1; k++) {
+                for(int k = 0; k <  network.numChannels*3; k++) {
                     for(int tc = 0; tc < network.getEdgeCount(); tc++) {
                         x[e.id][k][tc] = cplex.intVar(0,1, "x("+e.id+")("+k+")("+tc+")");
                     }
@@ -389,10 +407,10 @@ public class WhitespaceShortCircuit {
             }
 
             // D
-            IloNumVar[][][] D = new IloNumVar[network.getEdgeCount()][network.numChannels*3+1][network.getEdgeCount()];
+            IloNumVar[][][] D = new IloNumVar[network.getEdgeCount()][network.numChannels*3][network.getEdgeCount()];
             for(Object o: network.getEdges()) {
                 Edge e = (Edge)o;
-                for(int k = 0; k < network.numChannels*3+1; k++) {
+                for(int k = 0; k < network.numChannels*3; k++) {
                     for(int tc = 0; tc < network.getEdgeCount(); tc++) {
                         D[e.id][k][tc] = cplex.numVar(0,1, "D("+e.id+")("+k+")("+tc+")");
                     }
@@ -400,10 +418,10 @@ public class WhitespaceShortCircuit {
             }
 
             // y
-            IloIntVar[][] y = new IloIntVar[network.getEdgeCount()][network.numChannels*3+1];
+            IloIntVar[][] y = new IloIntVar[network.getEdgeCount()][network.numChannels*3];
             for(Object o: network.getEdges()) {
                 Edge e = (Edge)o;
-                for(int k = 0; k <  network.numChannels*3+1; k++) {
+                for(int k = 0; k <  network.numChannels*3; k++) {
                     y[e.id][k] = cplex.intVar(0,1, "y("+e.id+")("+k+")");
                 }
             }
@@ -413,9 +431,9 @@ public class WhitespaceShortCircuit {
 
             // Equation 2
             // Channel costs are all the same 1.0 for now
-            double[] channel_costs = new double[network.numChannels * 3 + 1];
+            double[] channel_costs = new double[network.numChannels * 3];
             Random randomGenerator = new Random();
-            for(int k = 0; k < network.numChannels * 3 + 1; k++) {
+            for(int k = 0; k < network.numChannels * 3; k++) {
                 channel_costs[k] = randomGenerator.nextFloat();
                 channel_costs[k] = 1.0;
             }
