@@ -392,7 +392,7 @@ public class WhitespaceShortCircuit {
             // c
             IloIntVar [] c = new IloIntVar[network.numChannels * 3]; 
             for(int i = 0; i < network.numChannels * 3; i++) {
-                c[i] = cplex.intVar(0,1, "c("+i+")");
+                c[i] = cplex.intVar(0, 1, "c("+i+")");
             }
 
             // x
@@ -401,7 +401,7 @@ public class WhitespaceShortCircuit {
                 Edge e = (Edge)o;
                 for(int k = 0; k <  network.numChannels*3; k++) {
                     for(int tc = 0; tc < network.getEdgeCount(); tc++) {
-                        x[e.id][k][tc] = cplex.intVar(0,1, "x("+e.id+")("+k+")("+tc+")");
+                        x[e.id][k][tc] = cplex.intVar(0, 1, "x("+e.id+")("+k+")("+tc+")");
                     }
                 }
             }
@@ -411,8 +411,8 @@ public class WhitespaceShortCircuit {
             for(Object o: network.getEdges()) {
                 Edge e = (Edge)o;
                 for(int k = 0; k < network.numChannels*3; k++) {
-                    for(int tc = 0; tc < network.getEdgeCount(); tc++) {
-                        D[e.id][k][tc] = cplex.numVar(0,1, "D("+e.id+")("+k+")("+tc+")");
+                    for(int size = 0; size < network.getEdgeCount(); size++) {
+                        D[e.id][k][size] = cplex.numVar(0, 1, "D("+e.id+")("+k+")("+size+")");
                     }
                 }
             }
@@ -422,7 +422,7 @@ public class WhitespaceShortCircuit {
             for(Object o: network.getEdges()) {
                 Edge e = (Edge)o;
                 for(int k = 0; k <  network.numChannels*3; k++) {
-                    y[e.id][k] = cplex.intVar(0,1, "y("+e.id+")("+k+")");
+                    y[e.id][k] = cplex.intVar(0, 1, "y("+e.id+")("+k+")");
                 }
             }
 
@@ -452,52 +452,71 @@ public class WhitespaceShortCircuit {
             cplex.add(objective);
 
             // Subject to Constraints
-            // Equation 4: Variable x contains max, clique, channel activation status
-            // The largest clique (in theory) would include all edges, therefore the size
-            // int max_id = 0;
-            // for(Object o: network.getEdges()) {
-            //     Edge e = (Edge)o;
-            //     if (e.id > max_id) {
-            //         max_id = e.id;
-            //     }
-            // }
-            // int[][] max_cliques = new int[max_id+1][network.numChannels*3+1];
-            // for(Object o: network.getEdges()) {
-            //     Edge e = (Edge)o;
-            //     for(int k = 0; k < e.channels.length; k++) {
-            //         // Find max clique involving (e_ik, c)
-            //         HashSet channel_cliques = (HashSet)clique_list.get(k);
-            //         int max_clique = findMaxClique(channel_cliques, e.id);
-            //         for(int mc = 1; mc < network.getEdgeCount(); mc++) {
-            //             x[e.id][k][mc] = cplex.intVar(0,1, "x("+e.id+")("+k+")("+mc+")");
-            //             if (mc == max_clique && e.channels[k] > 0.0) {
-            //                 cplex.addEq(1, x[e.id][k][mc]);
-            //                 max_cliques[e.id][k] = mc;
-            //             } else {
-            //                 cplex.addEq(0, x[e.id][k][mc]);
-            //             }
-            //         }
-            //     }
-            // }
+            // Equation 4: Variable x contains clique size, clique, channel activation status
+            for(Object o: network.getEdges()) {
+                Edge e = (Edge)o;
+                HashMap edge_cliques = (HashMap)clique_list.get(e.id);
+                for(int k = 0; k < network.numChannels * 3; k++) {
+                    // Keys are size, values are a list of cliques of that size
+                    HashMap cliques_of_size_key = (HashMap)edge_cliques.get(k);
+                    for(Object t: cliques_of_size_key.keySet()) {
+                        Integer size = (Integer)t;
+                        HashSet n_cliques = (HashSet)cliques_of_size_key.get(size);
+                        for(Object u: n_cliques) {
+                            HashSet clique = (HashSet)u;
+                            x[e.id][k][size] = cplex.intVar(0,1, "x("+e.id+")("+k+")("+size+")");
+                            if (size == clique.size() && e.channels[k] > 0.0) {
+                                cplex.addEq(1, x[e.id][k][size]);
+                            } else {
+                                cplex.addEq(0, x[e.id][k][size]);
+                            }
+                        }                            
+                    }
+                }
+            }
 
             // Equation 5: break up capacity by clique size
-            // for(Object o: network.getEdges()) {
-            //     Edge e = (Edge)o;
-            //     for(int k = 0; k < network.numChannels*3+1; k++) {
-            //         for(int mc = 1; mc < network.getEdgeCount(); mc++) {
-            //             D[e.id][k][mc] = e.channels[k] / mc;
-            //             cplex.addEq(e.channels[k]/tc, D[e.id][k][tc]);
-            //         }
-            //     }
-            // }
+            for(Object o: network.getEdges()) {
+                Edge e = (Edge)o;
+                for(int k = 0; k < network.numChannels*3; k++) {
+                    for(int size = 1; size < network.getEdgeCount(); size++) {
+                        cplex.addEq(e.channels[k]/size, D[e.id][k][size]);
+                    }
+                }
+            }
 
             // Equation 6:
+            for(Object o: network.getEdges()) {
+                Edge e = (Edge)o;
+                for(int k = 0; k <  network.numChannels*3; k++) {
+                    for(int tc = 0; tc < network.getEdgeCount(); tc++) {
+                        cplex.addEq(cplex.sum(x[e.id][k]), y[e.id][k]);
+                        cplex.addLe(y[e.id][k], c[k]);
+                    }
+                }
+            }
 
             // Equation 7: 
+            for(Object o: network.getEdges()) {
+                Edge e = (Edge)o;
+                for(int k = 0; k <  network.numChannels*3; k++) {
+                    cplex.addLe(cplex.sum(x[e.id][k]), 1);
+                }
+            }
 
             // Equation 8: 
 
             // Equation 9: Total capacity constraint
+            for(Object o: network.getEdges()) {
+                Edge e = (Edge)o;
+                IloNumExpr Dx = cplex.numExpr();
+                for(int k = 0; k <  network.numChannels*3; k++) {
+                    for(int tc = 0; tc < network.getEdgeCount(); tc++) {
+                        Dx = cplex.sum(cplex.prod(D[e.id][k][tc], x[e.id][k][tc]), Dx);
+                        cplex.addLe(e.bottleNeckCapacity(), Dx);
+                    }
+                }
+            }
             
             // Write the model out to validate
             cplex.exportModel("JRCS-TVWS.lp");
