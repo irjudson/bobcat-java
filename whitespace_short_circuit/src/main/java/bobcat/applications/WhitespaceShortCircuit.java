@@ -504,7 +504,38 @@ public class WhitespaceShortCircuit {
                 }
             }
 
+            // for each channel k
+            //   for all cliques Q in the conflict graph for channel k
+            //     for each node v_i in Q
+            //       for 1 <= c < |Q|
+            //         create a cplex constraint according to #8
+
             // Equation 8: 
+            for(Object o: network.getEdges()) {
+                Edge e = (Edge)o;
+                HashMap edge_cliques = (HashMap)clique_list.get(e.id);
+                for(int k = 0; k < network.numChannels*3; k++) {
+                    HashMap cliques_of_size_key = (HashMap)edge_cliques.get(k);
+                    for(Object t: cliques_of_size_key.keySet()) {
+                        Integer size = (Integer)t;
+                        HashSet n_cliques = (HashSet)cliques_of_size_key.get(size);
+                        for(Object u: n_cliques) {
+                            HashSet clique = (HashSet)u;
+                            for(Object v: clique) {
+                                Edge f = (Edge)v;
+                                for(int d = 1; d < clique.size(); d++) {
+                                    IloNumExpr Ys = cplex.numExpr();
+                                    for(Object w: clique) {
+                                        Edge g = (Edge)w;
+                                        Ys = cplex.sum(y[g.id][k], Ys);
+                                    }
+                                    cplex.addLe(x[f.id][k][d], cplex.diff(clique.size(), Ys));
+                                }
+                            }
+                        }                            
+                    }
+                }
+            }
 
             // Equation 9: Total capacity constraint
             for(Object o: network.getEdges()) {
