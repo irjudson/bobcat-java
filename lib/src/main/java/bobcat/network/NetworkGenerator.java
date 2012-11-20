@@ -6,6 +6,7 @@ import edu.uci.ics.jung.graph.util.Pair;
 import org.apache.commons.collections15.Factory;
 
 import java.util.HashSet;
+import java.util.Set;
 import java.util.Iterator;
 import java.util.Random;
 import java.util.Vector;
@@ -46,6 +47,7 @@ public class NetworkGenerator<V, E> implements GraphGenerator<V, E> {
     public Network<V, E> create() {
         Network<V, E> network = null;
         network = this.networkFactory.create();
+        System.out.println("Making Network!");
         network.relays = new HashSet(numRelays);
         network.subscribers = new HashSet(numSubscribers);
         network.relayList = new Vertex[numRelays];
@@ -188,45 +190,8 @@ public class NetworkGenerator<V, E> implements GraphGenerator<V, E> {
             network.removeVertex(v);
         }
 
-        //Build interference table
-        for (E e1a : network.getEdges()) {
-            for (E e2a : network.getEdges()) {
-                Edge e1 = (Edge) e1a;
-                Edge e2 = (Edge) e2a;
-                if (e1 != e2) {
-                    Pair<V> v1a = network.getEndpoints(e1a);
-                    Pair<V> v2a = network.getEndpoints(e2a);
-                    Vertex v1f = (Vertex) v1a.getFirst();
-                    Vertex v1s = (Vertex) v1a.getSecond();
-                    Vertex v2f = (Vertex) v2a.getFirst();
-                    Vertex v2s = (Vertex) v2a.getSecond();
-                    double dist = v1f.distanceTo(v2f);
-                    double d2 = v1f.distanceTo(v2s);
-                    double d3 = v1s.distanceTo(v2f);
-                    double d4 = v1s.distanceTo(v2s);
-                    dist = (dist < d2) ? dist : d2;
-                    dist = (dist < d3) ? dist : d3;
-                    dist = (dist < d4) ? dist : d4;
-                    for (int i = 0; i < network.numChannels * 3; i++) {
-                        double range = 0.0d;
-                        if (i > 0 && i < network.numChannels) {
-                            range = 30.8;
-                        } else if (i >= 0 + network.numChannels &&
-                                i < 2 * network.numChannels) {
-                            range = 9.0;
-                        } else if (i >= 0 + 2 * network.numChannels &&
-                                i < 3 * network.numChannels) {
-                            range = 3.6;
-                        }
-                        if (dist < range) {
-                            network.interferes[e1.id][e2.id][i] = true;
-                            network.interferes[e2.id][e1.id][i] = true;
-                        }
-                    }
-                }
-            }
-        }
-
+        network.computeInterference();
+        
         network.random = random;
         return network;
     }
