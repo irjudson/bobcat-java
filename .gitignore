@@ -8,4 +8,4 @@
 # Directories
 target
 cplex.log
-.idea
+.idea/
