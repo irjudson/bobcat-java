@@ -144,7 +144,7 @@ public class WhitespaceShortCircuit {
 			return (false);
 		}
 
-		if (edge.channels[channel] == 0.0d) {
+		if (edge.channels[channel] <= 1.0) {
 			// System.out.println("Edge has no throughput.");
 			return (false);
 		}
@@ -181,11 +181,11 @@ public class WhitespaceShortCircuit {
 				clique.clear();
 
 				// Clique of size 1, if it's using channel k
-				if (Math.abs(e.channels[k]) > 0.0) {
+				if (Math.abs(e.channels[k]) > 1.0) {
 
 					clique.add(e);
 					cliques.add(new HashSet(clique));
-					System.out.println("Adding clique of size 1 for channel: "+k+" : "+clique);
+					// System.out.println("Adding clique of size 1 for channel: "+k+" ("+e.channels[k]+") "+clique);
 					size_cliques.put(1, new HashSet(cliques));
 					cliques.clear();
 
@@ -306,13 +306,7 @@ public class WhitespaceShortCircuit {
 			System.out.println("Random Seed: " + options.seed);
 		}
 
-		// Renumber edges
-		int eid = 0;
-		for (Object o : network.getEdges()) {
-			Edge e = (Edge) o;
-			e.setId(eid);
-			eid += 1;
-		}
+
 
 		if (options.verbose) {
 			System.out.println("Prim Tree: ");
@@ -335,6 +329,21 @@ public class WhitespaceShortCircuit {
 
 		for (Object e : toRemove) {
 			network.removeEdge((Edge) e);
+		}
+
+		// Renumber nodes
+		int nid = 0;
+		for(Object o : network.getVertices()) {
+			Vertex v = (Vertex)o;
+			v.id = nid;
+			nid += 1;
+		}
+		// Renumber edges
+		int eid = 0;
+		for (Object o : network.getEdges()) {
+			Edge e = (Edge) o;
+			e.setId(eid);
+			eid += 1;
 		}
 
 		network.computeInterference();
@@ -376,7 +385,7 @@ public class WhitespaceShortCircuit {
 		// indexed by edge, then channel, then a list of cliques
 		HashMap clique_list = enumerate_cliques(network);
 
-		System.out.println(clique_list);
+		// System.out.println(clique_list);
 
 		if (options.verbose) {
 			// System.out.println(clique_list);
@@ -419,6 +428,7 @@ public class WhitespaceShortCircuit {
 				Edge e = (Edge) o;
 				for (int k = 0; k < network.numChannels * 3; k++) {
 					for (int tc = 0; tc < MAX_CLIQUE_SIZE; tc++) {
+						// System.out.println(x.length+","+x[0].length+","+x[0][0].length+ "  "+e.id+","+k+","+tc);
 						x[e.id][k][tc] = cplex.intVar(0, 1, "x(" + e.id + ")(" + k + ")(" + tc + ")");
 					}
 				}
@@ -500,7 +510,7 @@ public class WhitespaceShortCircuit {
 			for (Object o : network.getEdges()) {
 				Edge e = (Edge) o;
 				for (int k = 0; k < network.numChannels * 3; k++) {
-					for (int size = 1; size < network.getEdgeCount(); size++) {
+					for (int size = 1; size < MAX_CLIQUE_SIZE; size++) {
 						cplex.addEq(e.channels[k] / size, D[e.id][k][size]);
 					}
 				}
@@ -561,7 +571,7 @@ public class WhitespaceShortCircuit {
 				Edge e = (Edge) o;
 				IloNumExpr Dx = cplex.numExpr();
 				for (int k = 0; k < network.numChannels * 3; k++) {
-					for (int tc = 0; tc < network.getEdgeCount(); tc++) {
+					for (int tc = 0; tc < MAX_CLIQUE_SIZE; tc++) {
 						Dx = cplex.sum(cplex.prod(D[e.id][k][tc], x[e.id][k][tc]), Dx);
 						cplex.addLe(e.bottleNeckCapacity(), Dx);
 					}
