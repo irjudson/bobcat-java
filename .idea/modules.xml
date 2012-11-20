@@ -7,7 +7,6 @@
       <module fileurl="file://$PROJECT_DIR$/directional_antennas/directional_antennas.iml" filepath="$PROJECT_DIR$/directional_antennas/directional_antennas.iml" />
       <module fileurl="file://$PROJECT_DIR$/lib/lib.iml" filepath="$PROJECT_DIR$/lib/lib.iml" />
       <module fileurl="file://$PROJECT_DIR$/routing_channel_selection/routing_channel_selection.iml" filepath="$PROJECT_DIR$/routing_channel_selection/routing_channel_selection.iml" />
-      <module fileurl="file://$PROJECT_DIR$/bobcatlib/tools.iml" filepath="$PROJECT_DIR$/bobcatlib/tools.iml" />
       <module fileurl="file://$PROJECT_DIR$/whitespace_short_circuit/whitespace_short_circuit.iml" filepath="$PROJECT_DIR$/whitespace_short_circuit/whitespace_short_circuit.iml" />
     </modules>
   </component>
