@@ -306,8 +306,6 @@ public class WhitespaceShortCircuit {
 			System.out.println("Random Seed: " + options.seed);
 		}
 
-
-
 		if (options.verbose) {
 			System.out.println("Prim Tree: ");
 			System.out.print(primTree.toString());
@@ -348,6 +346,11 @@ public class WhitespaceShortCircuit {
 
 		network.computeInterference();
 
+		double[] demand = new double[network.getEdgeCount()];
+		for(int i = 0; i < network.getEdgeCount(); i++) {
+			demand[i] = 0.0;
+		}
+
 		// go over all the nxn nodes and find the throughput using rcs
 		for (Object o : network.getVertices()) {
 			Vertex source = (Vertex) o;
@@ -356,10 +359,24 @@ public class WhitespaceShortCircuit {
 				if (source.id < destination.id) {
 					DijkstraShortestPath<Vertex, Edge> dspath = new DijkstraShortestPath(primTree);
 					List<Edge> spath = dspath.getPath(source, destination);
+					Object[] g = spath.toArray();
+					Edge f = (Edge)g[0];
+					for(int l = 1; l < spath.size(); l++) {
+						Edge h = (Edge)g[l];
+						if (h.bottleNeckCapacity() < f.bottleNeckCapacity()) {
+							f = h;
+						}
+					}
+					for (Object xz : network.getEdges()) {
+						Edge e = (Edge)xz;
+						if (spath.contains(e)) {
+							demand[e.id] += f.bottleNeckCapacity();
+						}
+					}
+
 					if (options.verbose) {
 						System.out.println(source + " -> " + destination + " : " + spath);
 					}
-
 				}
 			}
 		}
@@ -385,11 +402,7 @@ public class WhitespaceShortCircuit {
 		// indexed by edge, then channel, then a list of cliques
 		HashMap clique_list = enumerate_cliques(network);
 
-		// System.out.println(clique_list);
-
 		if (options.verbose) {
-			// System.out.println(clique_list);
-
 			//Print out all cliques to make sure we're good
 			for (Object o : network.getEdges()) {
 				Edge e = (Edge) o;
@@ -427,7 +440,7 @@ public class WhitespaceShortCircuit {
 			for (Object o : network.getEdges()) {
 				Edge e = (Edge) o;
 				for (int k = 0; k < network.numChannels * 3; k++) {
-					for (int tc = 0; tc < MAX_CLIQUE_SIZE; tc++) {
+					for (int tc = 1; tc < MAX_CLIQUE_SIZE; tc++) {
 						// System.out.println(x.length+","+x[0].length+","+x[0][0].length+ "  "+e.id+","+k+","+tc);
 						x[e.id][k][tc] = cplex.intVar(0, 1, "x(" + e.id + ")(" + k + ")(" + tc + ")");
 					}
@@ -435,12 +448,12 @@ public class WhitespaceShortCircuit {
 			}
 
 			// D
-			IloNumVar[][][] D = new IloNumVar[network.getEdgeCount()][network.numChannels * 3][MAX_CLIQUE_SIZE];
+			Double[][][] D = new Double[network.getEdgeCount()][network.numChannels * 3][MAX_CLIQUE_SIZE];
 			for (Object o : network.getEdges()) {
 				Edge e = (Edge) o;
 				for (int k = 0; k < network.numChannels * 3; k++) {
-					for (int size = 0; size < MAX_CLIQUE_SIZE; size++) {
-						D[e.id][k][size] = cplex.numVar(0, 1, "D(" + e.id + ")(" + k + ")(" + size + ")");
+					for (int size = 1; size < MAX_CLIQUE_SIZE; size++) {
+						D[e.id][k][size] = e.channels[k] / size;
 					}
 				}
 			}
@@ -457,8 +470,7 @@ public class WhitespaceShortCircuit {
 			// Objective function in Equation 3 - Minimize Overall Channel Costs
 			IloLinearNumExpr cost = cplex.linearNumExpr();
 
-			// Equation 2
-			// Channel costs are all the same 1.0 for now
+			// Initialize Channel Costs: Channel costs are all the same 1.0 for now
 			double[] channel_costs = new double[network.numChannels * 3];
 			Random randomGenerator = new Random();
 			for (int k = 0; k < network.numChannels * 3; k++) {
@@ -466,7 +478,7 @@ public class WhitespaceShortCircuit {
 				channel_costs[k] = 1.0;
 			}
 
-			// Equation 3: Minimize channel costs (This is the objective)
+			// Objective: Minimize channel costs 
 			// Channel usage array (Number of edges * number of channels per edge)
 			for (Object o : network.getEdges()) {
 				Edge e = (Edge) o;
@@ -479,8 +491,7 @@ public class WhitespaceShortCircuit {
 			IloObjective objective = cplex.minimize(cost);
 			cplex.add(objective);
 
-			// Subject to Constraints
-			// Equation 4: Variable x contains clique size, clique, channel activation status
+			// Initialize x variable: Variable x contains clique size, clique, channel activation status
 			for (Object o : network.getEdges()) {
 				Edge e = (Edge) o;
 				HashMap edge_cliques = (HashMap) clique_list.get(e.id);
@@ -506,76 +517,106 @@ public class WhitespaceShortCircuit {
 				}
 			}
 
-			// Equation 5: break up capacity by clique size
+			System.out.println("Constraint 5: Enfoce good channel choices.");
+			// Constraint 5:
 			for (Object o : network.getEdges()) {
 				Edge e = (Edge) o;
 				for (int k = 0; k < network.numChannels * 3; k++) {
-					for (int size = 1; size < MAX_CLIQUE_SIZE; size++) {
-						cplex.addEq(e.channels[k] / size, D[e.id][k][size]);
+					// Sum acros clique sizes
+					IloNumExpr irj = cplex.numExpr();
+					for (int tc = 1; tc < MAX_CLIQUE_SIZE; tc++) {
+						irj = cplex.sum(x[e.id][k][tc], irj);
 					}
+					System.out.println(y[e.id][k] + " = " + irj);
+					cplex.addEq(y[e.id][k], irj);
+					System.out.println(y[e.id][k] + " <= " + c[k]);
+					cplex.addLe(y[e.id][k], c[k]);
 				}
 			}
 
-			// Equation 6:
+			if (options.verbose) {
+				System.out.println("Constraint 6: Only pick one channel");
+			}
+
+			// Constraint 6: 
 			for (Object o : network.getEdges()) {
 				Edge e = (Edge) o;
 				for (int k = 0; k < network.numChannels * 3; k++) {
-					for (int tc = 0; tc < MAX_CLIQUE_SIZE; tc++) {
-						IloNumExpr irj = cplex.sum(x[e.id][k]);
-						cplex.addEq(y[e.id][k], cplex.sum(x[e.id][k]));
-						cplex.addLe(y[e.id][k], c[k]);
+					// Sum acros clique sizes
+					IloNumExpr irj = cplex.numExpr();
+					for (int tc = 1; tc < MAX_CLIQUE_SIZE; tc++) {
+						irj = cplex.sum(x[e.id][k][tc], irj);
 					}
+					System.out.println(irj+" <= " + 1);
+					cplex.addLe(irj, 1);
 				}
 			}
 
-			// Equation 7: 
-			for (Object o : network.getEdges()) {
-				Edge e = (Edge) o;
-				for (int k = 0; k < network.numChannels * 3; k++) {
-					cplex.addLe(cplex.sum(x[e.id][k]), 1);
-				}
+			if (options.verbose) {
+				System.out.println("Constraint 7: Enforcing good choices");
 			}
 
-			// Equation 8: 
+			// Constraint 7:
+			// Make interim data structure to make this easier
+			HashMap cl = new HashMap();
 			for (Object o : network.getEdges()) {
 				Edge e = (Edge) o;
 				HashMap edge_cliques = (HashMap) clique_list.get(e.id);
 				for (int k = 0; k < network.numChannels * 3; k++) {
-					HashMap cliques_of_size_key = (HashMap) edge_cliques.get(k);
-					if (cliques_of_size_key != null) {
-						for (Object t : cliques_of_size_key.keySet()) {
-							Integer size = (Integer) t;
-							HashSet n_cliques = (HashSet) cliques_of_size_key.get(size);
-							for (Object u : n_cliques) {
-								HashSet clique = (HashSet) u;
-								for (Object v : clique) {
-									Edge f = (Edge) v;
-									for (int d = 1; d < clique.size(); d++) {
-										IloNumExpr Ys = cplex.numExpr();
-										for (Object w : clique) {
-											Edge g = (Edge) w;
-											Ys = cplex.sum(y[g.id][k], Ys);
-										}
-										System.out.println(x[f.id][k][d] + " <= " + clique.size() + " - " + Ys);
-										cplex.addLe(x[f.id][k][d], cplex.diff(clique.size(), Ys));
-									}
-								}
+					HashMap cliques_of_size = (HashMap)edge_cliques.get(k);
+					if (cliques_of_size != null) {
+						for (int c1 = 1; c1 < MAX_CLIQUE_SIZE; c1++) {
+							HashSet cliques = (HashSet)cliques_of_size.get(c1);
+							HashSet cls = (HashSet)cl.get(k);
+							if (cls == null) {
+								cl.put(k, new HashSet(cliques));
+							} else {
+								cls.addAll(cliques);
+								cl.put(k, cls);
 							}
 						}
 					}
 				}
 			}
 
-			// Equation 9: Total capacity constraint
-			for (Object o : network.getEdges()) {
-				Edge e = (Edge) o;
-				IloNumExpr Dx = cplex.numExpr();
-				for (int k = 0; k < network.numChannels * 3; k++) {
-					for (int tc = 0; tc < MAX_CLIQUE_SIZE; tc++) {
-						Dx = cplex.sum(cplex.prod(D[e.id][k][tc], x[e.id][k][tc]), Dx);
-						cplex.addLe(e.bottleNeckCapacity(), Dx);
+			for (int k = 0; k < network.numChannels * 3; k++) {
+				HashSet cliques = (HashSet)cl.get(k);
+				if (cliques != null) {
+					for (Object o : cliques) {
+						HashSet clique = (HashSet)o;
+						IloNumExpr cs2 = cplex.numExpr();
+						for (Object p : clique) {
+							Edge e = (Edge)p;
+							cs2 = cplex.sum(y[e.id][k], cs2);
+						}
+						IloNumExpr c8 = cplex.diff(clique.size(), cs2);
+						for (Object p : clique) {
+							Edge e = (Edge)p;
+							for (int i = 0; i < clique.size(); i++) {
+								System.out.println(x[e.id][k][i] + " " + c8);
+								cplex.addLe(x[e.id][k][i], c8);
+							}
+						}
 					}
 				}
+			}
+
+
+			if (options.verbose) {
+				System.out.println("Constraint 8: Total capacity");
+			}
+
+			// Constraint 8: Total capacity constraint
+			for (Object zz : network.getEdges()) {
+				Edge e = (Edge) zz;
+				IloNumExpr lhs = cplex.numExpr();
+				for (int k = 0; k < network.numChannels * 3; k++) {
+					for (int tc = 1; tc < MAX_CLIQUE_SIZE; tc++) {
+						lhs = cplex.sum(cplex.prod(D[e.id][k][tc], x[e.id][k][tc]), lhs);
+					}
+				}
+				System.out.println(lhs + " >= "+ demand[e.id]);
+				cplex.addGe(lhs, demand[e.id]);
 			}
 
 			// Write the model out to validate
@@ -583,19 +624,27 @@ public class WhitespaceShortCircuit {
 
 			if (cplex.solve()) {
 				double cplexTotal = cplex.getObjValue();
-//                for (int i = 0; i < numRelays; i++) {
-//                    for (int j = 0; j < numSubscribers; j++) {
-//                        IloLinearNumExpr rhs = cplex.linearNumExpr();
-//                        for (int k = 0; k < numThetas; k++) {
-//                            if (cplex.getValue(x[i][j][k]) > threshold) {
-//                                System.out.println("x[" + relay[i] + "," + sub[j] + "," + k + "] = 1");
-//                            }
-//                        }
-//                    }
-//                }
-//                for (int j = 0; j < numSubscribers; j++) {
-//                    System.out.println("sub " + sub[j] + " objective " + sub[j].queueLength * cplex.getValue(y[j]));
-//                }
+
+				for (Object o : network.getEdges()) {
+					Edge e = (Edge) o;
+					for (int k = 0; k < network.numChannels * 3; k++) {
+						for (int tc = 1; tc < MAX_CLIQUE_SIZE; tc++) {
+							System.out.println("x("+e.id+")("+k+")("+tc+") = " + cplex.getValue(x[e.id][k][tc]));
+						}
+					}
+				}
+
+				for (Object o : network.getEdges()) {
+					Edge e = (Edge) o;
+					for (int k = 0; k < network.numChannels * 3; k++) {
+						System.out.println("y("+e.id+")("+k+") = " + cplex.getValue(y[e.id][k]));
+					}
+				}
+
+				for (int i = 0; i < network.numChannels * 3; i++) {
+					System.out.println("c("+i+") = "+cplex.getValue(c[i]));
+				}
+
 				System.out.println("Solution status = " + cplex.getStatus());
 				System.out.println("Solution value  = " + cplexTotal);
 			} else {
