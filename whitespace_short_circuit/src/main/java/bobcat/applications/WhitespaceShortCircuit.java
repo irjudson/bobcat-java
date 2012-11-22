@@ -346,11 +346,6 @@ public class WhitespaceShortCircuit {
 
 		network.computeInterference();
 
-		double[] demand = new double[network.getEdgeCount()];
-		for(int i = 0; i < network.getEdgeCount(); i++) {
-			demand[i] = 0.0;
-		}
-
 		// go over all the nxn nodes and find the throughput using rcs
 		for (Object o : network.getVertices()) {
 			Vertex source = (Vertex) o;
@@ -359,21 +354,6 @@ public class WhitespaceShortCircuit {
 				if (source.id < destination.id) {
 					DijkstraShortestPath<Vertex, Edge> dspath = new DijkstraShortestPath(primTree);
 					List<Edge> spath = dspath.getPath(source, destination);
-					Object[] g = spath.toArray();
-					Edge f = (Edge)g[0];
-					for(int l = 1; l < spath.size(); l++) {
-						Edge h = (Edge)g[l];
-						if (h.bottleNeckCapacity() < f.bottleNeckCapacity()) {
-							f = h;
-						}
-					}
-					for (Object xz : network.getEdges()) {
-						Edge e = (Edge)xz;
-						if (spath.contains(e)) {
-							demand[e.id] += f.bottleNeckCapacity();
-						}
-					}
-
 					if (options.verbose) {
 						System.out.println(source + " -> " + destination + " : " + spath);
 					}
@@ -435,6 +415,12 @@ public class WhitespaceShortCircuit {
 				c[i] = cplex.intVar(0, 1, "c(" + i + ")");
 			}
 
+			Double[] demand = new Double[network.getEdgeCount()];
+			for (Object o: network.getEdges()) {
+				Edge e = (Edge)o;
+				demand[e.id] = 10.0;
+			}
+
 			// x
 			IloIntVar[][][] x = new IloIntVar[network.getEdgeCount()][network.numChannels * 3][MAX_CLIQUE_SIZE];
 			for (Object o : network.getEdges()) {
@@ -453,7 +439,11 @@ public class WhitespaceShortCircuit {
 				Edge e = (Edge) o;
 				for (int k = 0; k < network.numChannels * 3; k++) {
 					for (int size = 1; size < MAX_CLIQUE_SIZE; size++) {
-						D[e.id][k][size] = e.channels[k] / size;
+						if (e.channels[k] >= 0) {
+							D[e.id][k][size] = e.channels[k] / size;	
+						} else {
+							D[e.id][k][size] = 0.0d;
+						}
 					}
 				}
 			}
@@ -490,6 +480,7 @@ public class WhitespaceShortCircuit {
 			}
 			IloObjective objective = cplex.minimize(cost);
 			cplex.add(objective);
+			System.out.println("Objective : "+cost);
 
 			// Initialize x variable: Variable x contains clique size, clique, channel activation status
 			for (Object o : network.getEdges()) {

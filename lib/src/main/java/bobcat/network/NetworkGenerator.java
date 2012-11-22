@@ -118,7 +118,7 @@ public class NetworkGenerator<V, E> implements GraphGenerator<V, E> {
                                 }
                             }
 
-                            if (edge.channels[i] == 1.0f) {
+                            if (edge.channels[i] == 1.0d) {
                                 edge.channels[i] = edge.lookupThroughput(freq);
                             }
                         }
