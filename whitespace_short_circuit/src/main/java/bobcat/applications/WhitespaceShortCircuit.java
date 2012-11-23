@@ -418,7 +418,7 @@ public class WhitespaceShortCircuit {
 			Double[] demand = new Double[network.getEdgeCount()];
 			for (Object o: network.getEdges()) {
 				Edge e = (Edge)o;
-				demand[e.id] = 10.0;
+				demand[e.id] = 2e7;
 			}
 
 			// x
@@ -464,19 +464,21 @@ public class WhitespaceShortCircuit {
 			double[] channel_costs = new double[network.numChannels * 3];
 			Random randomGenerator = new Random();
 			for (int k = 0; k < network.numChannels * 3; k++) {
-				channel_costs[k] = randomGenerator.nextFloat();
-				channel_costs[k] = 1.0;
+                if (k % 3 == 0) {
+                	channel_costs[k] = 1.0;
+                }
+                if (k % 3 == 1) {
+                	channel_costs[k] = 1.0;
+                }
+                if (k % 3 == 2) {
+                	channel_costs[k] = 1.0;
+                }
 			}
 
 			// Objective: Minimize channel costs 
 			// Channel usage array (Number of edges * number of channels per edge)
-			for (Object o : network.getEdges()) {
-				Edge e = (Edge) o;
-				for (int k = 0; k < e.channels.length; k++) {
-					if (e.channels[k] > 0.0) {
-						cost.addTerm(channel_costs[k], c[k]);
-					}
-				}
+			for (int k = 0; k < network.numChannels * 3; k++) {
+				cost.addTerm(channel_costs[k], c[k]);
 			}
 			IloObjective objective = cplex.minimize(cost);
 			cplex.add(objective);
@@ -518,9 +520,9 @@ public class WhitespaceShortCircuit {
 					for (int tc = 1; tc < MAX_CLIQUE_SIZE; tc++) {
 						irj = cplex.sum(x[e.id][k][tc], irj);
 					}
-					System.out.println(y[e.id][k] + " = " + irj);
+					// System.out.println(y[e.id][k] + " = " + irj);
 					cplex.addEq(y[e.id][k], irj);
-					System.out.println(y[e.id][k] + " <= " + c[k]);
+					// System.out.println(y[e.id][k] + " <= " + c[k]);
 					cplex.addLe(y[e.id][k], c[k]);
 				}
 			}
@@ -538,7 +540,7 @@ public class WhitespaceShortCircuit {
 					for (int tc = 1; tc < MAX_CLIQUE_SIZE; tc++) {
 						irj = cplex.sum(x[e.id][k][tc], irj);
 					}
-					System.out.println(irj+" <= " + 1);
+					// System.out.println(irj+" <= " + 1);
 					cplex.addLe(irj, 1);
 				}
 			}
@@ -584,7 +586,7 @@ public class WhitespaceShortCircuit {
 						for (Object p : clique) {
 							Edge e = (Edge)p;
 							for (int i = 0; i < clique.size(); i++) {
-								System.out.println(x[e.id][k][i] + " " + c8);
+								// System.out.println(x[e.id][k][i] + " " + c8);
 								cplex.addLe(x[e.id][k][i], c8);
 							}
 						}
@@ -606,7 +608,7 @@ public class WhitespaceShortCircuit {
 						lhs = cplex.sum(cplex.prod(D[e.id][k][tc], x[e.id][k][tc]), lhs);
 					}
 				}
-				System.out.println(lhs + " >= "+ demand[e.id]);
+				// System.out.println(lhs + " >= "+ demand[e.id]);
 				cplex.addGe(lhs, demand[e.id]);
 			}
 
