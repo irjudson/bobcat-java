@@ -51,6 +51,26 @@ public class Network<V, E>
         return (gen);
     }
 
+    public Edge getEdge(int id) {
+        for (Object o: this.getEdges()) {
+            Edge e = (Edge)o;
+            if (e.id == id) {
+                return(e);
+            }
+        }
+        return(null);
+    }
+
+        public Vertex getVertex(int id) {
+        for (Object o: this.getVertices()) {
+            Vertex v = (Vertex)o;
+            if (v.id == id) {
+                return(v);
+            }
+        }
+        return(null);
+    }
+
     public static NetworkGenerator getGenerator(int relays, int subscribers, 
                                                 double width, double height, 
                                                 long seed, int channels, double prob) {
