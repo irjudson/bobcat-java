@@ -65,9 +65,9 @@ public class Draw {
                     return Color.CYAN;
                 } else if (e.type == 2) {
                     return Color.GREEN;
-                } else if (e.type == 4) {
+                } else if (e.type == 3) {
                     return Color.RED;
-                } else if (e.type == 5) {
+                } else if (e.type == 4) {
                     return Color.YELLOW;
                 } else {
                     return Color.BLACK;

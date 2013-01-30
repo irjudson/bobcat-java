@@ -48,4 +48,8 @@ public class WhitespaceShortCircuitOptions {
   @Option(name = "-r", aliases = {"--rcs"}, metaVar = "RCS",
           usage = "Consider the best N paths in RCS calcuations.")
     public Integer consider = 50;
+
+  @Option(name = "-b", aliases = {"--backup"}, metaVar = "BACKUP",
+          usage = "Consider a second MST for augmenting paths.")
+    public Boolean backup = false;
 }

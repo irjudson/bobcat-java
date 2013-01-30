@@ -23,120 +23,6 @@ public class WhitespaceShortCircuit {
 
 	static Logger logger = Logger.getLogger("RoutingChannelSelection");
 
-	public static Boolean inPath(Graph network, List<Edge> path, Vertex v) {
-		HashSet nodes = new HashSet();
-		for (Object obj : path) {
-			Edge e = (Edge) obj;
-			Pair<Vertex> ends = network.getEndpoints(e);
-			nodes.add((Vertex) ends.getFirst());
-			nodes.add((Vertex) ends.getSecond());
-		}
-		return nodes.contains(v);
-	}
-
-	public static void combinations(Vector<Integer> current, HashSet combos) {
-		combos.add(current);
-		for (Object o : current) {
-			Vector<Integer> next = (Vector<Integer>) current.clone();
-			next.remove(o);
-			if (!next.isEmpty()) {
-				combinations((Vector<Integer>) next.clone(), combos);
-			}
-		}
-	}
-
-	public static PathChannelSet rcsPath(Graph network, Vertex src, Vertex dst, int consider) {
-		ChannelSelection cs = new ChannelSelection((Network) network);
-
-		// Initialize
-		for (Object o : network.getVertices()) {
-			Vertex v = (Vertex) o;
-			v.rcsPaths = new TreeMap();
-			if (v == src) {
-				PathChannelSet p0 = new PathChannelSet();
-				v.rcsPaths.put(0.0d, p0);
-			}
-		}
-
-		for (int i = 0; i < network.getVertexCount(); i++) {
-			// For each edge see if we can extend the existing path/channel sets
-			// with the available path/channel sets
-			for (Object o : network.getEdges()) {
-				Edge e = (Edge) o;
-				Pair<Vertex> ends = network.getEndpoints(e);
-				Vertex u = (Vertex) ends.getFirst();
-				Vertex v = (Vertex) ends.getSecond();
-				HashSet<Vector<Integer>> chset = new HashSet<Vector<Integer>>();
-
-				Vector<Integer> cset = new Vector<Integer>();
-				for (int j = 0; j < e.channels.length; j++) {
-					if (e.channels[j] > 0.0d) {
-						cset.add(j);
-					}
-				}
-				combinations(cset, chset);
-
-				// First direction
-				for (Object c : u.rcsPaths.keySet()) {
-					PathChannelSet opcs = (PathChannelSet) u.rcsPaths.get(c);
-					ArrayList<Edge> opath = opcs.getPath();
-					if (opath.size() == i && !inPath(network, opath, v)) {
-						PathCS opathCS = opcs.pathCS;
-
-						for (Object chs : chset) {
-							Vector<Integer> channels = (Vector<Integer>) chs;
-							PathChannelSet npcs = new PathChannelSet(opcs);
-							npcs.path.add(e);
-							TreeSet<LinkChannel> nextChannelTS = new TreeSet();
-							for (int k = 0; k < channels.size(); k++) {
-								nextChannelTS.add(new LinkChannel(npcs.path.size() - 1, channels.elementAt(k)));
-							}
-							npcs.pathCS.selected.add(nextChannelTS);
-							double thpt = cs.evalPathCS(npcs.path, npcs.pathCS);
-							v.rcsPaths.put(thpt, npcs);
-							// If we added one and we're over, take one out
-							if (v.rcsPaths.keySet().size() > consider) {
-								v.rcsPaths.remove(v.rcsPaths.firstKey());
-							}
-						}
-					}
-				}
-
-				// Second direction
-				for (Object c : v.rcsPaths.keySet()) {
-					PathChannelSet opcs = (PathChannelSet) v.rcsPaths.get(c);
-					ArrayList<Edge> opath = opcs.getPath();
-					if (opath.size() == i && !inPath(network, opath, u)) {
-						PathCS opathCS = opcs.pathCS;
-						for (Object chs : chset) {
-							Vector<Integer> channels = (Vector<Integer>) chs;
-							PathChannelSet npcs = new PathChannelSet(opcs);
-							npcs.path.add(e);
-							TreeSet<LinkChannel> nextChannelTS = new TreeSet();
-							for (int k = 0; k < channels.size(); k++) {
-								nextChannelTS.add(new LinkChannel(npcs.path.size() - 1, channels.elementAt(k)));
-							}
-							npcs.pathCS.selected.add(nextChannelTS);
-							double thpt = cs.evalPathCS(npcs.path, npcs.pathCS);
-							u.rcsPaths.put(thpt, npcs);
-							// If we added one and we're over, take one out
-							if (u.rcsPaths.keySet().size() > consider) {
-								u.rcsPaths.remove(u.rcsPaths.firstKey());
-							}
-						}
-					}
-				}
-			}
-		}
-
-		if (dst.rcsPaths.size() == 0) {
-			System.out.println("Didn't find RCS Path.");
-			return (null);
-		}
-
-		return (PathChannelSet) dst.rcsPaths.get(dst.rcsPaths.lastKey());
-	}
-
 	public static Boolean grows_clique(HashSet clique, Edge edge, Network network, int channel) {
 
 		if (clique.size() > network.getEdgeCount()) {
@@ -238,15 +124,14 @@ public class WhitespaceShortCircuit {
 
 	public static void main(String[] args) {
 		NetworkGenerator networkGenerator;
-		Network network;
+		Network network, nnet;
 		WhitespaceShortCircuitOptions options = new WhitespaceShortCircuitOptions();
 		CmdLineParser parser = new CmdLineParser(options);
 		Draw drawing = null;
 		ChannelSelection cs = null;
 		double rcsThpt;
-		double[][] rcsBisectionBandwidth;
-		PrimMinimumSpanningTree psp = null;
-		Graph primTree = null;
+		PrimMinimumSpanningTree psp = null, dpsp = null;
+		Graph primTree = null, dprimTree = null;
 
 		parser.setUsageWidth(80);
 
@@ -266,7 +151,6 @@ public class WhitespaceShortCircuit {
 		do {
 			networkGenerator = Network.getGenerator(options.relays, options.subscribers, options.width, options.height, options.seed + count, options.channels, options.channelProb);
 			network = networkGenerator.create();
-			rcsBisectionBandwidth = new double[network.getVertices().size()][network.getVertices().size()];
 
 			Transformer<Edge, Double> wtTransformer = new Transformer<Edge, Double>() {
 
@@ -298,8 +182,23 @@ public class WhitespaceShortCircuit {
 
 			psp = new PrimMinimumSpanningTree(networkGenerator.networkFactory, pTransformer);
 			primTree = psp.transform(network);
+
+			// Remove all MST edges
+			for(Object o: primTree.getEdges()) {
+				network.removeEdge((Edge)o);
+			}
+
+			// Find another MST
+			dpsp = new PrimMinimumSpanningTree(networkGenerator.networkFactory, pTransformer);
+			dprimTree = psp.transform(network);
+
+			// Put all MST edges back
+			for(Object o: primTree.getEdges()) {
+				Edge e = (Edge)o;
+				network.addEdge(e, primTree.getIncidentVertices(e));
+			}
 			count++;
-		} while (network.getVertexCount() != primTree.getVertexCount());
+		} while (network.getVertexCount() != primTree.getVertexCount() && primTree.getVertexCount() != dprimTree.getVertexCount());
 
 		// Handle options that matter
 		if (options.verbose) {
@@ -312,16 +211,39 @@ public class WhitespaceShortCircuit {
 			System.out.println("");
 		}
 
+		// MST
 		for (Object e : primTree.getEdges()) {
-			// Color the MST
 			((Edge) e).type = 2;
 		}
 
+		// Second MST
+		for (Object e: dprimTree.getEdges()) {
+			((Edge)e).type=3;
+		}
+
+		if (options.verbose) {
+			System.out.println("2nd Prim Tree: ");
+			System.out.print(dprimTree.toString());
+			System.out.println("");
+		}
+
+		// Show graph
+		if (options.display) {
+			drawing = new Draw(network, 1024, 768,
+				"Routing and Channel Selection Application");
+			drawing.draw();
+		}
+
+		
 		Collection<Edge> primEdges = primTree.getEdges();
+		Collection<Edge> dprimEdges = dprimTree.getEdges();
+
 		Vector toRemove = new Vector();
 		for (Object e : network.getEdges()) {
-			if (!primEdges.contains(e)) {
-				toRemove.addElement(e);
+			if (primEdges.contains(e) || (options.backup && dprimEdges.contains(e))) {
+				// Do nothing
+			} else {
+				toRemove.addElement(e);				
 			}
 		}
 
@@ -347,29 +269,43 @@ public class WhitespaceShortCircuit {
 		network.computeInterference();
 
 		DijkstraShortestPath<Vertex, Edge> dspath = new DijkstraShortestPath(primTree);
+		DijkstraShortestPath<Vertex, Edge> dspath2 = new DijkstraShortestPath(dprimTree);
 
-		Double[] demand = new Double[network.getEdgeCount()];
+		Double[] demand1 = new Double[network.getEdgeCount()];
+		Double[] demand2 = new Double[network.getEdgeCount()];
 
 		for(Object o : network.getEdges()) {
 			Edge e = (Edge)o;
-			demand[e.id] = 0.0d;
+			demand1[e.id] = 0.0d;
+			demand2[e.id] = 0.0d;
 		}
 		// Select a random set of (s,t) and set the connection requests along that path to 2e7
 		Random rg = new Random();
-		for (int i = 0; i < 5; i++) {
-			Vertex s = network.getVertex(rg.nextInt(network.getVertexCount()+1));
-			Vertex t = network.getVertex(rg.nextInt(network.getVertexCount()+1));
+		for (int i = 0; i < network.getVertexCount(); i++) {
+			Vertex s = network.getVertex(rg.nextInt(network.getVertexCount()-1));
+			Vertex t = network.getVertex(rg.nextInt(network.getVertexCount()-1));
 			if (s != t && s != null && t != null) {
 				List<Edge> spath = dspath.getPath(s,t);
-				System.out.println("Path #"+i+": ("+s+","+t+") :"+spath);
+				List<Edge> spath2 = dspath2.getPath(s,t);
+				if (options.verbose) {
+					System.out.println("Path #"+i+": ("+s+","+t+") :"+spath);
+				}
 				for(Object o: spath) {
 					Edge e = (Edge)o;
-					demand[e.id] += 2e7;
+					demand1[e.id] += 2e7;
+				}
+				if (options.verbose) {
+					System.out.println("Path #"+i+": ("+s+","+t+") :"+spath2);
+				}				
+				for(Object o: spath2) {
+					Edge e = (Edge)o;
+					demand2[e.id] += 2e7;
 				}
 			} else {
 				i--;
 			}
 		}
+
 
 		// go over all the nxn nodes and find the throughput using rcs
 		for (Object o : network.getVertices()) {
@@ -393,13 +329,14 @@ public class WhitespaceShortCircuit {
 			}
 		}
 
-		// Print out the edge list // if (options.verbose) {
+		if (options.verbose) {
 			System.out.println(network.getEdgeCount() + " Edges");
 			for (Object e : network.getEdges()) {
 				Edge z = (Edge)e;
-				System.out.println("\t" + z + " Bottleneck Capacity: " + z.bottleNeckCapacity() + " Demand: "+demand[z.id]);
+				System.out.println("\t" + z + " Bottleneck Capacity: " + z.bottleNeckCapacity() +
+								   " Demand (MST): "+demand1[z.id]+ " Demand (MST2): "+demand2[z.id]);
 			}
-		// }
+		}
 
 		// Print out the conflict graph
 		// for(int i = 0; i < network.getEdgeCount() + 1; i++) {
@@ -508,10 +445,13 @@ public class WhitespaceShortCircuit {
 			}
 			IloObjective objective = cplex.minimize(cost);
 			cplex.add(objective);
-			System.out.println("Objective : "+cost);
+			if (options.verbose) {
+				System.out.println("Objective : "+cost);
 
-			// Constraint 1:
-			System.out.println("Constraint 1:");
+				// Constraint 1:
+				System.out.println("Constraint 1:");
+			}
+
 			for (Object o : network.getEdges()) {
 				Edge e = (Edge) o;
 				for (int k = 0; k < network.numChannels * 3; k++) {
@@ -521,15 +461,19 @@ public class WhitespaceShortCircuit {
 					for (int tc = 2; tc < MAX_CLIQUE_SIZE; tc++) {
 						irj = cplex.sum(x[e.id][k][tc], irj);
 					}
-					System.out.println("\t"+y[e.id][k] + " = " + irj);
+					if (options.verbose) {
+						System.out.println("\t"+y[e.id][k] + " = " + irj);
+						System.out.println("\t"+y[e.id][k] + " <= " + c[k]);
+					}
 					cplex.addEq(y[e.id][k], irj);
-					System.out.println("\t"+y[e.id][k] + " <= " + c[k]);
 					cplex.addLe(y[e.id][k], c[k]);
 				}
 			}
 
-			// Constraint 2: 
-			System.out.println("Constraint 2:");
+			if (options.verbose) {
+				// Constraint 2: 
+				System.out.println("Constraint 2:");
+			}
 			for (Object o : network.getEdges()) {
 				Edge e = (Edge) o;
 				for (int k = 0; k < network.numChannels * 3; k++) {
@@ -539,13 +483,17 @@ public class WhitespaceShortCircuit {
 					for (int tc = 2; tc < MAX_CLIQUE_SIZE; tc++) {
 						irj = cplex.sum(x[e.id][k][tc], irj);
 					}
-					System.out.println("\t"+irj+" <= " + 1);
+					if (options.verbose) {
+						System.out.println("\t"+irj+" <= " + 1);
+					}
 					cplex.addLe(irj, 1);
 				}
 			}
 
-			// Constraint 3:
-			System.out.println("Constraint 3:");
+			if (options.verbose) {
+				// Constraint 3:
+				System.out.println("Constraint 3:");
+			}
 			// Make interim data structure to make this easier
 			HashMap cl = new HashMap();
 			for (Object o : network.getEdges()) {
@@ -585,7 +533,9 @@ public class WhitespaceShortCircuit {
 						for (Object p : clique) {
 							Edge e = (Edge)p;
 							for (int i = 1; i < clique.size() - 1; i++) {
-								System.out.println("\t"+x[e.id][k][i] + " <= " + c8);
+								if (options.verbose) {
+									System.out.println("\t"+x[e.id][k][i] + " <= " + c8);
+								}
 								cplex.addLe(x[e.id][k][i], c8);
 							}
 						}
@@ -593,9 +543,10 @@ public class WhitespaceShortCircuit {
 				}
 			}
 
-
-			// Constraint 4: Total capacity constraint
-			System.out.println("Constraint 4:");
+			if (options.verbose) {
+				// Constraint 4: Total capacity constraint
+				System.out.println("Constraint 4:");
+			}
 			for (Object zz : network.getEdges()) {
 				Edge e = (Edge) zz;
 				IloNumExpr lhs = cplex.numExpr();
@@ -605,8 +556,10 @@ public class WhitespaceShortCircuit {
 					}
 				}
 				// Calculate demand
-				System.out.println("\t"+lhs + " >= "+ demand[e.id]);
-				cplex.addGe(lhs, demand[e.id]);
+				if (options.verbose) {
+					System.out.println("\t"+lhs + " >= "+ demand1[e.id] + demand2[e.id]);
+				}
+				cplex.addGe(lhs, demand1[e.id] + demand2[e.id]);
 			}
 
 			// Write the model out to validate
@@ -625,23 +578,24 @@ public class WhitespaceShortCircuit {
 								sum += D[e.id][k][tc];
 								System.out.println("\tEdge: "+e.id+" Channel: "+k+" Throughput: "+D[e.id][k][tc]);
 							}
-							System.out.println("x("+e.id+")("+k+")("+tc+") = " + cplex.getValue(x[e.id][k][tc]));
+							// System.out.println("x("+e.id+")("+k+")("+tc+") = " + cplex.getValue(x[e.id][k][tc]));
 						}
 					}
-					System.out.println("Edge: "+e.id+" Total Contribution: "+sum);
+					// System.out.println("Edge: "+e.id+" Total Contribution: "+sum);
 				}
 
-				for (Object o : network.getEdges()) {
-					Edge e = (Edge) o;
-					for (int k = 0; k < network.numChannels * 3; k++) {
-						System.out.println("y("+e.id+")("+k+") = " + cplex.getValue(y[e.id][k]));
+				if (options.verbose) {
+					for (Object o : network.getEdges()) {
+						Edge e = (Edge) o;
+						for (int k = 0; k < network.numChannels * 3; k++) {
+							System.out.println("y("+e.id+")("+k+") = " + cplex.getValue(y[e.id][k]));
+						}
+					}
+
+					for (int i = 0; i < network.numChannels * 3; i++) {
+						System.out.println("c("+i+") = "+cplex.getValue(c[i]));
 					}
 				}
-
-				for (int i = 0; i < network.numChannels * 3; i++) {
-					System.out.println("c("+i+") = "+cplex.getValue(c[i]));
-				}
-
 				System.out.println("Solution status = " + cplex.getStatus());
 				System.out.println("Solution value  = " + cplexTotal);
 			} else {
@@ -662,14 +616,5 @@ public class WhitespaceShortCircuit {
 		System.out.println("Seed, Width, Height, Nodes, Users, Channels");
 		System.out.println(options.seed + ", " + options.width + ", " + options.height + ", " + options.relays + ", " +
 			options.subscribers + ", " + options.channels);
-
-		// System.out.println("RCS Bisection Bandwidth:");
-		// for(int i = 0; i < rcsBisectionBandwidth.length; i++) {
-		//     System.out.print(i + " :");
-		//     for(int j = 0; j < rcsBisectionBandwidth[i].length;j++) {
-		//         System.out.printf(" %7.2g", rcsBisectionBandwidth[i][j]);
-		//     }
-		//     System.out.print("\n");
-		// }
 	}
 }
