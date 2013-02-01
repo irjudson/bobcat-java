@@ -183,32 +183,28 @@ public class WhitespaceShortCircuit {
 			psp = new PrimMinimumSpanningTree(networkGenerator.networkFactory, pTransformer);
 			primTree = psp.transform(network);
 
-			// Remove all MST edges
-			for(Object o: primTree.getEdges()) {
-				network.removeEdge((Edge)o);
-			}
+			if (options.backup) {
+				// Remove all MST edges
+				for(Object o: primTree.getEdges()) {
+					network.removeEdge((Edge)o);
+				}
 
-			// Find another MST
-			dpsp = new PrimMinimumSpanningTree(networkGenerator.networkFactory, pTransformer);
-			dprimTree = psp.transform(network);
+				// Find another MST
+				dpsp = new PrimMinimumSpanningTree(networkGenerator.networkFactory, pTransformer);
+				dprimTree = psp.transform(network);
 
-			// Put all MST edges back
-			for(Object o: primTree.getEdges()) {
-				Edge e = (Edge)o;
-				network.addEdge(e, primTree.getIncidentVertices(e));
+				// Put all MST edges back
+				for(Object o: primTree.getEdges()) {
+					Edge e = (Edge)o;
+					network.addEdge(e, primTree.getIncidentVertices(e));
+				}
 			}
 			count++;
-		} while (network.getVertexCount() != primTree.getVertexCount() && primTree.getVertexCount() != dprimTree.getVertexCount());
+		} while (network.getVertexCount() != primTree.getVertexCount() || (options.backup && network.getVertexCount() != dprimTree.getVertexCount()));
 
 		// Handle options that matter
 		if (options.verbose) {
 			System.out.println("Random Seed: " + options.seed);
-		}
-
-		if (options.verbose) {
-			System.out.println("Prim Tree: ");
-			System.out.print(primTree.toString());
-			System.out.println("");
 		}
 
 		// MST
@@ -216,33 +212,21 @@ public class WhitespaceShortCircuit {
 			((Edge) e).type = 2;
 		}
 
-		// Second MST
-		for (Object e: dprimTree.getEdges()) {
-			((Edge)e).type=3;
+		if (options.backup) {
+			// Second MST
+			for (Object e: dprimTree.getEdges()) {
+				((Edge)e).type=3;
+			}
 		}
-
-		if (options.verbose) {
-			System.out.println("2nd Prim Tree: ");
-			System.out.print(dprimTree.toString());
-			System.out.println("");
-		}
-
-		// Show graph
-		if (options.display) {
-			drawing = new Draw(network, 1024, 768,
-				"Routing and Channel Selection Application");
-			drawing.draw();
-		}
-
 		
-		Collection<Edge> primEdges = primTree.getEdges();
-		Collection<Edge> dprimEdges = dprimTree.getEdges();
+		HashSet edges_to_save = new HashSet(primTree.getEdges());
+		if (options.backup) {
+			edges_to_save.addAll(dprimTree.getEdges());
+		}
 
 		Vector toRemove = new Vector();
 		for (Object e : network.getEdges()) {
-			if (primEdges.contains(e) || (options.backup && dprimEdges.contains(e))) {
-				// Do nothing
-			} else {
+			if (! edges_to_save.contains(e)) {
 				toRemove.addElement(e);				
 			}
 		}
@@ -266,6 +250,25 @@ public class WhitespaceShortCircuit {
 			eid += 1;
 		}
 
+		if (options.verbose) {
+			System.out.println("Prim Tree: ");
+			System.out.print(primTree.toString());
+			System.out.println("");
+		}
+
+		if (options.verbose && options.backup) {
+			System.out.println("2nd Prim Tree: ");
+			System.out.print(dprimTree.toString());
+			System.out.println("");
+		}
+
+		// Show graph
+		if (options.display) {
+			drawing = new Draw(network, 1024, 768,
+				"Routing and Channel Selection Application");
+			drawing.draw();
+		}
+
 		network.computeInterference();
 
 		DijkstraShortestPath<Vertex, Edge> dspath = new DijkstraShortestPath(primTree);
@@ -284,22 +287,26 @@ public class WhitespaceShortCircuit {
 		for (int i = 0; i < network.getVertexCount(); i++) {
 			Vertex s = network.getVertex(rg.nextInt(network.getVertexCount()-1));
 			Vertex t = network.getVertex(rg.nextInt(network.getVertexCount()-1));
+			System.out.println("(s,t): " + s + ","+t+ "["+network.getVertexCount()+"]");
 			if (s != t && s != null && t != null) {
 				List<Edge> spath = dspath.getPath(s,t);
-				List<Edge> spath2 = dspath2.getPath(s,t);
 				if (options.verbose) {
-					System.out.println("Path #"+i+": ("+s+","+t+") :"+spath);
+					System.out.println("MST Path #"+i+": ("+s+","+t+") :"+spath);
 				}
 				for(Object o: spath) {
 					Edge e = (Edge)o;
 					demand1[e.id] += 2e7;
 				}
-				if (options.verbose) {
-					System.out.println("Path #"+i+": ("+s+","+t+") :"+spath2);
-				}				
-				for(Object o: spath2) {
-					Edge e = (Edge)o;
-					demand2[e.id] += 2e7;
+				if (options.backup) {
+					List<Edge> spath2 = dspath2.getPath(s,t);
+					if (options.verbose) {
+						System.out.println("MST2 Path #"+i+": ("+s+","+t+") :"+spath2);
+					}
+					for(Object o: spath2) {
+						Edge e = (Edge)o;
+						System.out.println("Edge: "+e.id+" ["+network.getEdgeCount()+"]");
+						demand2[e.id] += 2e7;
+					}
 				}
 			} else {
 				i--;
