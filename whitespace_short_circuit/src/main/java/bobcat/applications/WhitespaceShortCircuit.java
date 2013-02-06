@@ -149,7 +149,8 @@ public class WhitespaceShortCircuit {
 
 		int count = 0;
 		do {
-			networkGenerator = Network.getGenerator(options.relays, options.subscribers, options.width, options.height, options.seed + count, options.channels, options.channelProb);
+			networkGenerator = Network.getGenerator(options.relays, options.subscribers, 
+				options.width, options.height, options.seed + count, options.channels, options.channelProb);
 			network = networkGenerator.create();
 
 			Transformer<Edge, Double> wtTransformer = new Transformer<Edge, Double>() {
@@ -183,24 +184,25 @@ public class WhitespaceShortCircuit {
 			psp = new PrimMinimumSpanningTree(networkGenerator.networkFactory, pTransformer);
 			primTree = psp.transform(network);
 
-			if (options.backup) {
-				// Remove all MST edges
-				for(Object o: primTree.getEdges()) {
-					network.removeEdge((Edge)o);
-				}
+			// Remove all MST edges
+			for(Object o: primTree.getEdges()) {
+				network.removeEdge((Edge)o);
+			}
 
-				// Find another MST
-				dpsp = new PrimMinimumSpanningTree(networkGenerator.networkFactory, pTransformer);
-				dprimTree = psp.transform(network);
+			// Find another MST
+			dpsp = new PrimMinimumSpanningTree(networkGenerator.networkFactory, pTransformer);
+			dprimTree = psp.transform(network);
 
-				// Put all MST edges back
-				for(Object o: primTree.getEdges()) {
-					Edge e = (Edge)o;
-					network.addEdge(e, primTree.getIncidentVertices(e));
-				}
+			// Put all MST edges back
+			for(Object o: primTree.getEdges()) {
+				Edge e = (Edge)o;
+				network.addEdge(e, primTree.getIncidentVertices(e));
 			}
 			count++;
-		} while (network.getVertexCount() != primTree.getVertexCount() || (options.backup && network.getVertexCount() != dprimTree.getVertexCount()));
+		} while (network.getVertexCount() != primTree.getVertexCount() || (network.getVertexCount() != dprimTree.getVertexCount()));
+
+		// Update the seed
+		options.seed += count;
 
 		// Handle options that matter
 		if (options.verbose) {
@@ -212,11 +214,9 @@ public class WhitespaceShortCircuit {
 			((Edge) e).type = 2;
 		}
 
-		if (options.backup) {
-			// Second MST
-			for (Object e: dprimTree.getEdges()) {
-				((Edge)e).type=3;
-			}
+		// Second MST
+		for (Object e: dprimTree.getEdges()) {
+			((Edge)e).type=3;
 		}
 		
 		HashSet edges_to_save = new HashSet(primTree.getEdges());
@@ -283,11 +283,10 @@ public class WhitespaceShortCircuit {
 			demand2[e.id] = 0.0d;
 		}
 		// Select a random set of (s,t) and set the connection requests along that path to 2e7
-		Random rg = new Random();
-		for (int i = 0; i < network.getVertexCount(); i++) {
-			Vertex s = network.getVertex(rg.nextInt(network.getVertexCount()-1));
-			Vertex t = network.getVertex(rg.nextInt(network.getVertexCount()-1));
-			System.out.println("(s,t): " + s + ","+t+ "["+network.getVertexCount()+"]");
+		for (int i = 0; i < 5; i++) {
+			Vertex s = network.getVertex(network.random.nextInt(network.getVertexCount()-1));
+			Vertex t = network.getVertex(network.random.nextInt(network.getVertexCount()-1));
+			// System.out.println("(s,t): " + s + ","+t+ "["+network.getVertexCount()+"]");
 			if (s != t && s != null && t != null) {
 				List<Edge> spath = dspath.getPath(s,t);
 				if (options.verbose) {
@@ -432,7 +431,6 @@ public class WhitespaceShortCircuit {
 
 			// Initialize Channel Costs: Channel costs are all the same 1.0 for now
 			double[] channel_costs = new double[network.numChannels * 3];
-			Random randomGenerator = new Random();
 			for (int k = 0; k < network.numChannels * 3; k++) {
                 if (k % 3 == 0) {
                 	channel_costs[k] = 1.0;
