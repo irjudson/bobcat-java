@@ -198,7 +198,7 @@ public class CognitiveRadioTopologyControl {
 				network.addEdge(e, primTree.getIncidentVertices(e));
 			}
 			options.seed++;
-		} while (network.getVertexCount() > 0 && (network.getVertexCount() != primTree.getVertexCount() || (network.getVertexCount() != dprimTree.getVertexCount())));
+		} while (network.getVertexCount() == 0 || network.getVertexCount() != primTree.getVertexCount() || network.getVertexCount() != dprimTree.getVertexCount());
 
 		// Handle options that matter
 		if (options.verbose) {
@@ -280,8 +280,8 @@ public class CognitiveRadioTopologyControl {
 		}
 		// Select a random set of (s,t) and set the connection requests along that path to 2e7
 		for (int i = 0; i < 5; i++) {
-			Vertex s = network.getVertex(network.random.nextInt(network.getVertexCount()-1));
-			Vertex t = network.getVertex(network.random.nextInt(network.getVertexCount()-1));
+			Vertex s = network.getVertex(network.random.nextInt(network.getVertexCount()));
+			Vertex t = network.getVertex(network.random.nextInt(network.getVertexCount()));
 			// System.out.println("(s,t): " + s + ","+t+ "["+network.getVertexCount()+"]");
 			if (s != t && s != null && t != null) {
 				List<Edge> spath = dspath.getPath(s,t);
