@@ -147,10 +147,9 @@ public class CognitiveRadioTopologyControl {
 			System.exit(1);
 		}
 
-		int count = 0;
 		do {
 			networkGenerator = Network.getGenerator(options.relays, options.subscribers, 
-				options.width, options.height, options.seed + count, options.channels, options.channelProb);
+				options.width, options.height, options.seed, options.channels, options.channelProb);
 			network = networkGenerator.create();
 
 			Transformer<Edge, Double> wtTransformer = new Transformer<Edge, Double>() {
@@ -198,11 +197,8 @@ public class CognitiveRadioTopologyControl {
 				Edge e = (Edge)o;
 				network.addEdge(e, primTree.getIncidentVertices(e));
 			}
-			count++;
-		} while (network.getVertexCount() != primTree.getVertexCount() || (network.getVertexCount() != dprimTree.getVertexCount()));
-
-		// Update the seed
-		options.seed += count;
+			options.seed++;
+		} while (network.getVertexCount() > 0 && (network.getVertexCount() != primTree.getVertexCount() || (network.getVertexCount() != dprimTree.getVertexCount())));
 
 		// Handle options that matter
 		if (options.verbose) {
