@@ -132,6 +132,8 @@ public class CognitiveRadioTopologyControl {
 		double rcsThpt;
 		PrimMinimumSpanningTree psp = null, dpsp = null;
 		Graph primTree = null, dprimTree = null;
+		int NUM_PATHS = 5;
+		Double DEMAND = 2e7;
 
 		parser.setUsageWidth(80);
 
@@ -146,6 +148,9 @@ public class CognitiveRadioTopologyControl {
 			parser.printUsage(System.err);
 			System.exit(1);
 		}
+
+		// back the seed of by one so we start on the same number
+		options.seed--;
 
 		do {
 			networkGenerator = Network.getGenerator(options.relays, options.subscribers, 
@@ -272,6 +277,8 @@ public class CognitiveRadioTopologyControl {
 
 		Double[] demand1 = new Double[network.getEdgeCount()];
 		Double[] demand2 = new Double[network.getEdgeCount()];
+		HashMap paths = new HashMap();
+		HashMap spaths = new HashMap();
 
 		for(Object o : network.getEdges()) {
 			Edge e = (Edge)o;
@@ -279,35 +286,36 @@ public class CognitiveRadioTopologyControl {
 			demand2[e.id] = 0.0d;
 		}
 		// Select a random set of (s,t) and set the connection requests along that path to 2e7
-		for (int i = 0; i < 5; i++) {
+		for (int i = 0; i < NUM_PATHS; i++) {
 			Vertex s = network.getVertex(network.random.nextInt(network.getVertexCount()));
 			Vertex t = network.getVertex(network.random.nextInt(network.getVertexCount()));
 			// System.out.println("(s,t): " + s + ","+t+ "["+network.getVertexCount()+"]");
 			if (s != t && s != null && t != null) {
 				List<Edge> spath = dspath.getPath(s,t);
+				paths.put(i, spath);
 				if (options.verbose) {
 					System.out.println("MST Path #"+i+": ("+s+","+t+") :"+spath);
 				}
 				for(Object o: spath) {
 					Edge e = (Edge)o;
-					demand1[e.id] += 2e7;
+					demand1[e.id] += DEMAND;
 				}
 				if (options.backup) {
 					List<Edge> spath2 = dspath2.getPath(s,t);
+					spaths.put(i, spath2);
 					if (options.verbose) {
 						System.out.println("MST2 Path #"+i+": ("+s+","+t+") :"+spath2);
 					}
 					for(Object o: spath2) {
 						Edge e = (Edge)o;
 						System.out.println("Edge: "+e.id+" ["+network.getEdgeCount()+"]");
-						demand2[e.id] += 2e7;
+						demand2[e.id] += DEMAND;
 					}
 				}
 			} else {
 				i--;
 			}
 		}
-
 
 		// go over all the nxn nodes and find the throughput using rcs
 		for (Object o : network.getVertices()) {
@@ -411,6 +419,14 @@ public class CognitiveRadioTopologyControl {
 						}
 					}
 				}
+			}
+
+			// d
+			IloNumVar[] d1 = new IloNumVar[NUM_PATHS];
+			IloNumVar[] d2 = new IloNumVar[NUM_PATHS];
+			for (int i = 0; i < NUM_PATHS; i++) {
+				d1[i] = cplex.numVar(0.0, Double.MAX_VALUE, "d1("+i+")");
+				d2[i] = cplex.numVar(0.0, Double.MAX_VALUE, "d2("+i+")");
 			}
 
 			// y
@@ -556,11 +572,42 @@ public class CognitiveRadioTopologyControl {
 						lhs = cplex.sum(cplex.prod(D[e.id][k][tc], x[e.id][k][tc]), lhs);
 					}
 				}
-				// Calculate demand
-				if (options.verbose) {
-					System.out.println("\t"+lhs + " >= "+ demand1[e.id] + demand2[e.id]);
+
+				if (options.backup) {
+					IloNumExpr rhs = cplex.numExpr();
+					for (int i = 0; i < NUM_PATHS; i++) {
+						List<Edge> p = (List<Edge>)paths.get(i);
+						List<Edge>sp = (List<Edge>)spaths.get(i);
+						if (p.contains(e)) {
+							rhs = cplex.sum(rhs, d1[i]);
+						}
+						if (sp.contains(e)) {
+							rhs = cplex.sum(rhs, d2[i]);
+						}
+					}
+					cplex.addGe(lhs, rhs);
+					// Calculate demand
+					if (options.verbose) {
+						System.out.println("\t"+lhs + " >= "+ rhs);
+					}
+				} else {
+					Double rhs = demand1[e.id] + demand2[e.id];
+					cplex.addGe(lhs, rhs);
+					// Calculate demand
+					if (options.verbose) {
+						System.out.println("\t"+lhs + " >= "+ rhs);
+					}
 				}
-				cplex.addGe(lhs, demand1[e.id] + demand2[e.id]);
+
+			}
+
+			if (options.backup) {
+				if (options.verbose) {
+					System.out.println("Constraint 5:");
+				}
+				for(int i = 0; i < NUM_PATHS; i++) {
+					cplex.addEq(cplex.sum(d1[i], d2[i]), DEMAND);
+				}
 			}
 
 			// Write the model out to validate
