@@ -308,7 +308,9 @@ public class CognitiveRadioTopologyControl {
 					}
 					for(Object o: spath2) {
 						Edge e = (Edge)o;
-						System.out.println("Edge: "+e.id+" ["+network.getEdgeCount()+"]");
+						if (options.verbose) {
+							System.out.println("Edge: "+e.id+" ["+network.getEdgeCount()+"]");
+						}
 						demand2[e.id] += DEMAND;
 					}
 				}
