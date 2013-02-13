@@ -38,11 +38,12 @@ public class Network<V, E>
      * @param <V> the vertex type for the graph factory
      * @param <E> the edge type for the graph factory
      */
-    public static NetworkGenerator getGenerator(int numRelays, int numSubscribers, int sectors, double width, double height, long seed, int theta, double meanq, double slotlen, int channels, double prob) {
+    public static NetworkGenerator getGenerator(int numRelays, int numSubscribers, int sectors, double width, double height, 
+                                                Random random, int theta, double meanq, double slotlen, int channels, double prob) {
+
         NetworkGenerator gen = new NetworkGenerator(new NetworkFactory(width, height, theta, channels),
-                                                    new VertexFactory(width, height, sectors, meanq, seed),
-                                                    new EdgeFactory(), numRelays, numSubscribers, width, height);
-        gen.setSeed(seed);
+                                                    new VertexFactory(width, height, sectors, meanq, random),
+                                                    new EdgeFactory(), numRelays, numSubscribers, width, height, random);
         thetaSet[0] = theta;
         meanQueueLength = meanq;
         timeslotLength = slotlen;
@@ -73,13 +74,12 @@ public class Network<V, E>
 
     public static NetworkGenerator getGenerator(int relays, int subscribers, 
                                                 double width, double height, 
-                                                long seed, int channels, double prob) {
+                                                Random random, int channels, double prob) {
         NetworkGenerator gen = new NetworkGenerator(new NetworkFactory(width, 
                                                                        height, 
                                                                        channels),
-                                                    new VertexFactory(width, height, seed),
-                                                    new EdgeFactory(), relays, subscribers, width, height);
-        gen.setSeed(seed);
+                                                    new VertexFactory(width, height, random),
+                                                    new EdgeFactory(), relays, subscribers, width, height, random);
         numChannels = channels;
         channelProb = prob;
         return (gen);
@@ -148,6 +148,7 @@ public class Network<V, E>
             }
         }        
     }
+
     public void calculateBeamSets() {
         int numRelays = relayList.length;
         int numSubs = subList.length;

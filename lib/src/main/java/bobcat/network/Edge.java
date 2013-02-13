@@ -13,7 +13,6 @@ public class Edge {
     public int type;
     public Double[] channels;
     public Boolean isMarked = false;
-    public double weight = 0.0d;
 
     public Edge(int id) {
         this.id = id;
@@ -42,7 +41,6 @@ public class Edge {
 
     public double bottleNeckWeight() {
         double max = channels.length * 45 * Math.pow(10, 6);
-        //return (max - (this.weight * bottleNeckCapacity()));
         return (max - (1.0 * bottleNeckCapacity()));
     }
 

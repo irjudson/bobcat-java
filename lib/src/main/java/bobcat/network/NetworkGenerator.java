@@ -34,7 +34,7 @@ public class NetworkGenerator<V, E> implements GraphGenerator<V, E> {
     public NetworkGenerator(Factory<Network<V, E>> networkFactory,
                             Factory<V> vertexFactory, Factory<E> edgeFactory,
                             int numRelays, int numSubscribers,
-                            double width, double height) {
+                            double width, double height, Random random) {
         this.networkFactory = networkFactory;
         this.vertexFactory = vertexFactory;
         this.edgeFactory = edgeFactory;
@@ -42,6 +42,7 @@ public class NetworkGenerator<V, E> implements GraphGenerator<V, E> {
         this.numSubscribers = numSubscribers;
         this.width = width;
         this.height = height;
+        this.random = random;
     }
 
     public Network<V, E> create() {
@@ -51,7 +52,7 @@ public class NetworkGenerator<V, E> implements GraphGenerator<V, E> {
         network.subscribers = new HashSet(numSubscribers);
         network.relayList = new Vertex[numRelays];
         for (int i = 0; i < numRelays; i++) {
-            V node = vertexFactory.create();
+            V node = this.vertexFactory.create();
             Vertex v = (Vertex) node;
             network.addVertex(node);
             network.relays.add(v);
@@ -60,7 +61,7 @@ public class NetworkGenerator<V, E> implements GraphGenerator<V, E> {
 
         network.subList = new Vertex[numSubscribers];
         for (int i = 0; i < numSubscribers; i++) {
-            V node = vertexFactory.create();
+            V node = this.vertexFactory.create();
             Vertex v = (Vertex) node;
             v.type = 2;
             network.subscribers.add(v);
@@ -202,7 +203,7 @@ public class NetworkGenerator<V, E> implements GraphGenerator<V, E> {
         network.subscribers = new HashSet(numSubscribers);
 
         // Create the root at the center
-        V root = vertexFactory.create();
+        V root = this.vertexFactory.create();
         network.addVertex(root);
         Vertex center = (Vertex) root;
         network.gateway = center;
@@ -213,7 +214,7 @@ public class NetworkGenerator<V, E> implements GraphGenerator<V, E> {
         // Create the rest of the nodes
         network.relayList = new Vertex[numRelays];
         for (int i = 0; i < numRelays; i++) {
-            V node = vertexFactory.create();
+            V node = this.vertexFactory.create();
             Vertex n = (Vertex) node;
             n.type = 1;
             // changed by Brendan so that 0 and numRelays-1 don't overlap
@@ -240,7 +241,7 @@ public class NetworkGenerator<V, E> implements GraphGenerator<V, E> {
 
         network.subList = new Vertex[numSubscribers];
         for (int i = 0; i < numSubscribers; i++) {
-            V node = vertexFactory.create();
+            V node = this.vertexFactory.create();
             Vertex v = (Vertex) node;
             v.type = 2;
             // Mark this vertex as a client.
@@ -248,17 +249,6 @@ public class NetworkGenerator<V, E> implements GraphGenerator<V, E> {
             network.subscribers.add(v);
             network.subList[i] = v;
         }
-        network.random = random;
         return network;
-    }
-
-    /**
-     * Sets the seed for the random number generator.
-     *
-     * @param seed input to the random number generator.
-     */
-    public void setSeed(long seed) {
-        random = new Random(seed);
-        ((VertexFactory) vertexFactory).setSeed(seed);
     }
 }

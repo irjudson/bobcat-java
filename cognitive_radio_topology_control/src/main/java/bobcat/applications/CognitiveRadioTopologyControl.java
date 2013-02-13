@@ -22,8 +22,6 @@ public class CognitiveRadioTopologyControl {
 
 	static int MAX_CLIQUE_SIZE = 4;
 
-	static Logger logger = Logger.getLogger("RoutingChannelSelection");
-
 	public static Boolean grows_clique(HashSet clique, Edge edge, Network network, int channel) {
 
 		if (clique.size() > network.getEdgeCount()) {
@@ -139,14 +137,10 @@ public class CognitiveRadioTopologyControl {
 
 		parser.setUsageWidth(80);
 
-		BasicConfigurator.configure();
-		logger.setLevel(Level.DEBUG);
-
 		try {
 			parser.parseArgument(args);
 		} catch (CmdLineException e) {
-			logger.error("Failed to parse command line arguments.");
-			logger.error(e.getMessage());
+			System.out.println("Failed to parse command line.");
 			parser.printUsage(System.err);
 			System.exit(1);
 		}
@@ -157,13 +151,15 @@ public class CognitiveRadioTopologyControl {
 		}
 
 		do {
-			networkGenerator = Network.getGenerator(options.relays, options.subscribers, 
-				options.width, options.height, options.seed, options.channels, options.channelProb);
-			network = networkGenerator.create();
-
 			if (find_seed) {
 				options.seed++;
 			}
+
+			Random gen = new Random(options.seed);
+			networkGenerator = Network.getGenerator(options.relays, options.subscribers, options.width, 
+													options.height, gen, options.channels, options.channelProb);
+
+			network = networkGenerator.create();
 
 			Transformer<Edge, Double> pTransformer = new Transformer<Edge, Double>() {
 
@@ -226,9 +222,7 @@ public class CognitiveRadioTopologyControl {
 		}
 		
 		HashSet edges_to_save = new HashSet(primTree.getEdges());
-		if (options.backup) {
-			edges_to_save.addAll(dprimTree.getEdges());
-		}
+		edges_to_save.addAll(dprimTree.getEdges());
 
 		Vector toRemove = new Vector();
 		for (Object e : network.getEdges()) {
@@ -240,6 +234,10 @@ public class CognitiveRadioTopologyControl {
 		for (Object e : toRemove) {
 			network.removeEdge((Edge) e);
 		}
+
+		// for(int i = 0; i < 10; i++) {
+		// 	System.out.println(network.getVertices());
+		// }
 
 		// Renumber nodes
 		int nid = 0;
