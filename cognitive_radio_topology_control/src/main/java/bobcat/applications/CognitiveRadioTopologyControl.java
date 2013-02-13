@@ -165,17 +165,6 @@ public class CognitiveRadioTopologyControl {
 				options.seed++;
 			}
 
-			Transformer<Edge, Double> wtTransformer = new Transformer<Edge, Double>() {
-
-				public Double transform(Edge e) {
-					if (e.capacity > 0.0) {
-						return e.length;
-					} else {
-						return Double.MAX_VALUE;
-					}
-				}
-			};
-
 			Transformer<Edge, Double> pTransformer = new Transformer<Edge, Double>() {
 
 				public Double transform(Edge e) {
