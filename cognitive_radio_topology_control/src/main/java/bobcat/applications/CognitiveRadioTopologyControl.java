@@ -16,6 +16,7 @@ import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 
 import java.util.*;
+import java.io.*;
 
 public class CognitiveRadioTopologyControl {
 
@@ -134,6 +135,7 @@ public class CognitiveRadioTopologyControl {
 		Graph primTree = null, dprimTree = null;
 		int NUM_PATHS = 5;
 		Double DEMAND = 2e7;
+		Boolean find_seed = false;
 
 		parser.setUsageWidth(80);
 
@@ -149,13 +151,19 @@ public class CognitiveRadioTopologyControl {
 			System.exit(1);
 		}
 
-		// back the seed of by one so we start on the same number
-		options.seed--;
+		if (options.seed == 0) {
+			find_seed = true;
+			options.seed = System.nanoTime();
+		}
 
 		do {
 			networkGenerator = Network.getGenerator(options.relays, options.subscribers, 
 				options.width, options.height, options.seed, options.channels, options.channelProb);
 			network = networkGenerator.create();
+
+			if (find_seed) {
+				options.seed++;
+			}
 
 			Transformer<Edge, Double> wtTransformer = new Transformer<Edge, Double>() {
 
@@ -202,9 +210,17 @@ public class CognitiveRadioTopologyControl {
 				Edge e = (Edge)o;
 				network.addEdge(e, primTree.getIncidentVertices(e));
 			}
-			options.seed++;
 		} while (network.getVertexCount() == 0 || network.getVertexCount() != primTree.getVertexCount() || network.getVertexCount() != dprimTree.getVertexCount());
 
+		String fname = "CRTC-"+options.seed+"-"+options.width+"-"+options.relays+"-"+options.subscribers+"-"+options.channels;
+
+		if (options.output) {
+			try {
+				System.setOut(new PrintStream(new FileOutputStream(fname+".out")));
+			} catch (FileNotFoundException e) {
+				System.out.println("Failed to redirect output to file.");
+			}
+		}
 		// Handle options that matter
 		if (options.verbose) {
 			System.out.println("Random Seed: " + options.seed);
@@ -262,15 +278,6 @@ public class CognitiveRadioTopologyControl {
 			System.out.print(dprimTree.toString());
 			System.out.println("");
 		}
-
-		// Show graph
-		if (options.display) {
-			drawing = new Draw(network, 1024, 768,
-				"Routing and Channel Selection Application");
-			drawing.draw();
-		}
-
-		network.computeInterference();
 
 		DijkstraShortestPath<Vertex, Edge> dspath = new DijkstraShortestPath(primTree);
 		DijkstraShortestPath<Vertex, Edge> dspath2 = new DijkstraShortestPath(dprimTree);
@@ -336,7 +343,6 @@ public class CognitiveRadioTopologyControl {
 					if (options.verbose) {
 						System.out.println(source + " -> " + destination + " : " + spath);						
 					}
-				// System.out.println(source + " -> " + destination + " : "+c.id+" : bnc:  "+c.bottleNeckCapacity() + " demand: " + demand[c.id]);
 				}
 			}
 		}
@@ -363,26 +369,26 @@ public class CognitiveRadioTopologyControl {
 		// indexed by edge, then channel, then a list of cliques
 		HashMap clique_list = enumerate_cliques(network);
 
-		if (options.verbose) {
-			//Print out all cliques to make sure we're good
-			for (Object o : network.getEdges()) {
-				Edge e = (Edge) o;
-				HashMap edge_cliques = (HashMap) clique_list.get(e.id);
-				for (int k = 0; k < network.numChannels * 3; k++) {
-					System.out.println("Cliques involving Edge: " + e.id + " using channel " + k + ":");
-					// Keys are size, values are a list of cliques of that size
-					HashMap cliques_of_size_key = (HashMap) edge_cliques.get(k);
-					if (cliques_of_size_key != null) {
-						for (Object t : cliques_of_size_key.keySet()) {
-							Integer size = (Integer) t;
-							HashSet clique = (HashSet) cliques_of_size_key.get(size);
-							System.out.print("\t[ Size: " + size + " #: " + clique.size() + "] ");
-							System.out.println(clique);							
-						}
-					}
-				}
-			}
-		}
+		// if (options.verbose) {
+		// 	//Print out all cliques to make sure we're good
+		// 	for (Object o : network.getEdges()) {
+		// 		Edge e = (Edge) o;
+		// 		HashMap edge_cliques = (HashMap) clique_list.get(e.id);
+		// 		for (int k = 0; k < network.numChannels * 3; k++) {
+		// 			System.out.println("Cliques involving Edge: " + e.id + " using channel " + k + ":");
+		// 			// Keys are size, values are a list of cliques of that size
+		// 			HashMap cliques_of_size_key = (HashMap) edge_cliques.get(k);
+		// 			if (cliques_of_size_key != null) {
+		// 				for (Object t : cliques_of_size_key.keySet()) {
+		// 					Integer size = (Integer) t;
+		// 					HashSet clique = (HashSet) cliques_of_size_key.get(size);
+		// 					System.out.print("\t[ Size: " + size + " #: " + clique.size() + "] ");
+		// 					System.out.println(clique);							
+		// 				}
+		// 			}
+		// 		}
+		// 	}
+		// }
 
 
 		// Build ILP
@@ -613,7 +619,8 @@ public class CognitiveRadioTopologyControl {
 			}
 
 			// Write the model out to validate
-			cplex.exportModel("CRTC.lp");
+			cplex.exportModel(fname+".lp");
+			cplex.setOut(null);
 
 			if (cplex.solve()) {
 				double cplexTotal = cplex.getObjValue();
@@ -628,10 +635,8 @@ public class CognitiveRadioTopologyControl {
 								sum += D[e.id][k][tc];
 								System.out.println("\tEdge: "+e.id+" Channel: "+k+" Throughput: "+D[e.id][k][tc]);
 							}
-							// System.out.println("x("+e.id+")("+k+")("+tc+") = " + cplex.getValue(x[e.id][k][tc]));
 						}
 					}
-					// System.out.println("Edge: "+e.id+" Total Contribution: "+sum);
 				}
 
 				if (options.verbose) {
@@ -646,8 +651,22 @@ public class CognitiveRadioTopologyControl {
 						System.out.println("c("+i+") = "+cplex.getValue(c[i]));
 					}
 				}
-				System.out.println("Solution status = " + cplex.getStatus());
-				System.out.println("Solution value  = " + cplexTotal);
+
+				if (options.verbose) {
+					System.out.println("Solution status = " + cplex.getStatus());
+				}
+
+				// Show graph
+				if (options.display) {
+					drawing = new Draw(network, 1024, 768,
+						"Routing and Channel Selection Application");
+					drawing.draw();
+				}
+
+				System.out.println("Seed, Width, Height, Nodes, Users, Channels, Cost");
+				System.out.println(options.seed + ", " + options.width + ", " + options.height + ", " + options.relays + ", " +
+					options.subscribers + ", " + options.channels + ", "+ cplexTotal);
+
 			} else {
 				System.out.println("Couldn't solve problem!");
 			}
@@ -656,15 +675,5 @@ public class CognitiveRadioTopologyControl {
 			System.err.println("Concert exception '" + e + "' caught.");
 		}
 
-		// Show graph
-		if (options.display) {
-			drawing = new Draw(network, 1024, 768,
-				"Routing and Channel Selection Application");
-			drawing.draw();
-		}
-
-		System.out.println("Seed, Width, Height, Nodes, Users, Channels");
-		System.out.println(options.seed + ", " + options.width + ", " + options.height + ", " + options.relays + ", " +
-			options.subscribers + ", " + options.channels);
 	}
 }

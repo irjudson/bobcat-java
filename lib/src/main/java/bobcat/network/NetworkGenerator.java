@@ -47,7 +47,6 @@ public class NetworkGenerator<V, E> implements GraphGenerator<V, E> {
     public Network<V, E> create() {
         Network<V, E> network = null;
         network = this.networkFactory.create();
-        System.out.println("Making Network!");
         network.relays = new HashSet(numRelays);
         network.subscribers = new HashSet(numSubscribers);
         network.relayList = new Vertex[numRelays];

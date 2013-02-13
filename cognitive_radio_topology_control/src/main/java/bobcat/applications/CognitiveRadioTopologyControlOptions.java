@@ -19,7 +19,7 @@ public class CognitiveRadioTopologyControlOptions {
 
   @Option(name = "-s", aliases = {"--seed"}, metaVar = "SEED",
           usage = "Specify the random seed, defaults to a random seed.")
-    public long seed = System.nanoTime();
+    public long seed = 0;
 
   @Option(name = "-u", aliases = {"--users"}, metaVar = "USERS",
           usage = "Number of users in the network")
@@ -52,4 +52,8 @@ public class CognitiveRadioTopologyControlOptions {
   @Option(name = "-b", aliases = {"--backup"}, metaVar = "BACKUP",
           usage = "Consider a second MST for augmenting paths.")
     public Boolean backup = false;
+
+  @Option(name = "-o", aliases = {"--output"}, metaVar = "OUTPUT",
+          usage = "Write output to a file.")
+    public Boolean output = false;
 }
