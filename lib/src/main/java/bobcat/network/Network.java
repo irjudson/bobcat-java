@@ -52,6 +52,31 @@ public class Network<V, E>
         return (gen);
     }
 
+    public static NetworkGenerator getGenerator(int numRelays, int numSubscribers, int sectors, double width, double height, 
+                                                long seed, int theta, double meanq, double slotlen, int channels, double prob) {
+
+        NetworkGenerator gen = new NetworkGenerator(new NetworkFactory(width, height, theta, channels),
+                                                    new VertexFactory(width, height, sectors, meanq, seed),
+                                                    new EdgeFactory(), numRelays, numSubscribers, width, height, seed);
+        thetaSet[0] = theta;
+        meanQueueLength = meanq;
+        timeslotLength = slotlen;
+        numChannels = channels;
+        channelProb = prob;
+        return (gen);
+    }
+
+    public static NetworkGenerator getGenerator(int numRelays, int numSubscribers, double width, double height, 
+                                                long seed, int channels, double prob) {
+
+        NetworkGenerator gen = new NetworkGenerator(new NetworkFactory(width, height, channels),
+                                                    new VertexFactory(width, height, seed),
+                                                    new EdgeFactory(), numRelays, numSubscribers, width, height, seed);
+        numChannels = channels;
+        channelProb = prob;
+        return (gen);
+    }
+
     public Edge getEdge(int id) {
         for (Object o: this.getEdges()) {
             Edge e = (Edge)o;

@@ -17,6 +17,7 @@ import org.kohsuke.args4j.CmdLineParser;
 
 import java.util.*;
 import java.io.*;
+import java.util.Collections;
 
 public class CognitiveRadioTopologyControl {
 
@@ -129,7 +130,7 @@ public class CognitiveRadioTopologyControl {
 		Draw drawing = null;
 		ChannelSelection cs = null;
 		double rcsThpt;
-		PrimMinimumSpanningTree psp = null, dpsp = null;
+		PrimMST psp = null, dpsp = null;
 		Graph primTree = null, dprimTree = null;
 		int NUM_PATHS = 5;
 		Double DEMAND = 2e7;
@@ -164,7 +165,7 @@ public class CognitiveRadioTopologyControl {
 			Transformer<Edge, Double> pTransformer = new Transformer<Edge, Double>() {
 
 				public Double transform(Edge e) {
-					return e.bottleNeckWeight();
+					return (e.bottleNeckWeight() + e.length);
 				}
 			};
 
@@ -178,7 +179,7 @@ public class CognitiveRadioTopologyControl {
 				e.type = 0;
 			}
 
-			psp = new PrimMinimumSpanningTree(networkGenerator.networkFactory, pTransformer);
+			psp = new PrimMST(networkGenerator.networkFactory, pTransformer);
 			primTree = psp.transform(network);
 
 			// Remove all MST edges
@@ -187,7 +188,7 @@ public class CognitiveRadioTopologyControl {
 			}
 
 			// Find another MST
-			dpsp = new PrimMinimumSpanningTree(networkGenerator.networkFactory, pTransformer);
+			dpsp = new PrimMST(networkGenerator.networkFactory, pTransformer);
 			dprimTree = psp.transform(network);
 
 			// Put all MST edges back
@@ -235,20 +236,21 @@ public class CognitiveRadioTopologyControl {
 			network.removeEdge((Edge) e);
 		}
 
-		// for(int i = 0; i < 10; i++) {
-		// 	System.out.println(network.getVertices());
-		// }
-
 		// Renumber nodes
+		List<Vertex> nodes = new ArrayList<Vertex>(network.getVertices());
+		Collections.sort(nodes);
 		int nid = 0;
-		for(Object o : network.getVertices()) {
+		for(Object o : nodes) {
 			Vertex v = (Vertex)o;
 			v.id = nid;
 			nid += 1;
 		}
+
 		// Renumber edges
+		List<Edge> elist = new ArrayList<Edge>(network.getEdges());
+		Collections.sort(elist);
 		int eid = 0;
-		for (Object o : network.getEdges()) {
+		for (Object o : elist) {
 			Edge e = (Edge) o;
 			e.setId(eid);
 			eid += 1;
@@ -612,7 +614,10 @@ public class CognitiveRadioTopologyControl {
 			if (cplex.solve()) {
 				double cplexTotal = cplex.getObjValue();
 
-				for (Object o : network.getEdges()) {
+				List<Edge> elist2 = new ArrayList<Edge>(network.getEdges());
+				Collections.sort(elist2);
+
+				for (Object o : elist2) {
 					Edge e = (Edge) o;
 					double sum = 0.0;
 					for (int k = 0; k < network.numChannels * 3; k++) {

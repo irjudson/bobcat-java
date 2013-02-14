@@ -5,14 +5,23 @@ import org.apache.commons.lang.StringUtils;
 import java.text.DecimalFormat;
 import java.util.Vector;
 
-public class Edge {
+public class Edge implements Comparable {
 
     public int id;
     public double length;
     public double capacity;
     public int type;
+    public double weight;
     public Double[] channels;
     public Boolean isMarked = false;
+
+
+    public int compareTo(Object otherEdge) throws ClassCastException {
+        if(!(otherEdge instanceof Edge))
+            throw new ClassCastException("An Edge object is expected.");
+        int otherId = ((Edge)otherEdge).id;
+        return this.id - otherId;
+    }
 
     public Edge(int id) {
         this.id = id;

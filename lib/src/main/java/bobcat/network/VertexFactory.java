@@ -22,6 +22,14 @@ public class VertexFactory implements Factory<Vertex> {
             this.random = new Random(seed);
         }
 
+    public VertexFactory(double width, double height, int sectors, double meanq, Random random)
+        {
+            this.width = width;
+            this.height = height;
+            this.sectors = sectors;
+            this.meanQueueLength = meanq;
+            this.random = random;
+        }
     public VertexFactory(double width, double height, Random random)
         {
             this.width = width;

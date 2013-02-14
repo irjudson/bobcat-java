@@ -45,6 +45,20 @@ public class NetworkGenerator<V, E> implements GraphGenerator<V, E> {
         this.random = random;
     }
 
+    public NetworkGenerator(Factory<Network<V, E>> networkFactory,
+                            Factory<V> vertexFactory, Factory<E> edgeFactory,
+                            int numRelays, int numSubscribers,
+                            double width, double height, long seed) {
+        this.networkFactory = networkFactory;
+        this.vertexFactory = vertexFactory;
+        this.edgeFactory = edgeFactory;
+        this.numRelays = numRelays;
+        this.numSubscribers = numSubscribers;
+        this.width = width;
+        this.height = height;
+        this.random = new Random(seed);
+    }
+
     public Network<V, E> create() {
         Network<V, E> network = null;
         network = this.networkFactory.create();
