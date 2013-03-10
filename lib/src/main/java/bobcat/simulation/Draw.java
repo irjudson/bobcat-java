@@ -52,7 +52,7 @@ public class Draw {
                 } else if (v.type == 4) {
                     return Color.BLUE;
                 } else {
-                    return Color.YELLOW;
+                    return Color.BLACK;
                 }
             }
         };

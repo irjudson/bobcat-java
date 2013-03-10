@@ -97,24 +97,9 @@ public class NetworkGenerator<V, E> implements GraphGenerator<V, E> {
                         // 0 means zero'd for interference
                         // > 0 means active (1) or effective throughput
 
-                        // Randomly pick channels
+                        // Turn all channels on
                         for (int i = 0; i < network.numChannels * 3; i++) {
-                            edge.channels[i] = -1.0d;
-                            if (i % 3 == 0) {
-                                if (random.nextDouble() < 0.25) {
-                                    edge.channels[i] = 1.0d;
-                                }
-                            }
-                            if (i % 3 == 1) {
-                                if (random.nextDouble() < 0.5) {
-                                    edge.channels[i] = 1.0d;
-                                }
-                            }
-                            if (i % 3 == 2) {
-                                if (random.nextDouble() < 0.75) {
-                                    edge.channels[i] = 1.0d;
-                                }
-                            }
+                            edge.channels[i] = 1.0d;
                         }
 
                         // Calculate throughput for each active channel

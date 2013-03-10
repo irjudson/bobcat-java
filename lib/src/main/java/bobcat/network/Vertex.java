@@ -30,6 +30,8 @@ public class Vertex implements Comparable {
     private double lambda = c / frequency;
     public Integer interferenceChannel;
     public Boolean isMarked = false;
+    public Boolean isGateway = false;
+    public Boolean isAP = false;
     public TreeMap rcsPaths;  
 
     public int compareTo(Object otherVertex) throws ClassCastException {
@@ -48,6 +50,7 @@ public class Vertex implements Comparable {
      **/
     public Vertex(int id, int sectors, double x, double y, double queueLength){
         this.id = id;
+        this.type = 2;
         this.sectors = sectors;
         this.sectorMap = new HashMap(sectors);
         this.queueLength = queueLength;
@@ -156,6 +159,22 @@ public class Vertex implements Comparable {
 
         // Transmitter Gain in dB
         double gainTransmitter = Math.pow(10, (2 + 10 * Math.log10(360.0 / covered)) / 10.0);
+        // Transmitter 
+        double range = this.gainReceiver * gainTransmitter * Math.pow(this.lambda, 2);
+        range /= Math.pow(4 * Math.PI, 2);
+        range /= Math.pow(10, -12.6);
+        range = Math.sqrt(range);
+
+        return range;
+    }
+
+    /**
+     *
+     * @return the max distance at which a receiver can be reached
+     */
+    public double calculateRange() {
+        // Transmitter Gain in dB
+        double gainTransmitter = Math.pow(10, (2 + 10 * Math.log10(1.0)) / 10.0);
         // Transmitter 
         double range = this.gainReceiver * gainTransmitter * Math.pow(this.lambda, 2);
         range /= Math.pow(4 * Math.PI, 2);

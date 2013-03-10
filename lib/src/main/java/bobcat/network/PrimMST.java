@@ -43,14 +43,29 @@ public class PrimMST<V,E>
   protected V findRoot(Graph<V,E> graph) {
     if (graph.getVertexCount() > 0) {
       Vertex retr = null;
+      // Find median x, y
+      double mx = 0.0;
+      double my = 0.0;
+      for (Object o : graph.getVertices()) {
+        Vertex v = (Vertex)o;
+        mx += v.location.getX();
+        my += v.location.getY();
+      }
+      mx /= graph.getVertexCount();
+      my /= graph.getVertexCount();
+
+      Vertex center = new Vertex(-1, 8, mx, my, 10.0);
       retr = (Vertex)graph.getVertices().iterator().next();
+      double distance = center.distanceTo(retr);
+
       for(Object o : graph.getVertices()) {
         Vertex v = (Vertex)o;
-        if (v.id < retr.id) {
+        if (center.distanceTo(v) < distance) {
+          distance = center.distanceTo(v);
           retr = v;
         }
       }
-      System.out.println("Next Node: "+retr);
+      ((Vertex)retr).isGateway = true;
       return((V)retr);
     } else {
       return null;

@@ -4,7 +4,14 @@ import org.kohsuke.args4j.Option;
 
 public class CognitiveRadioTopologyControlOptions {
 
-    // Execution stuff
+  @Option(name = "-a", aliases = {"--aps"}, metaVar = "APS",
+          usage = "Number of APs in the network.")
+    public int aps = 0;
+
+  @Option(name = "-k", aliases = {"--k"}, metaVar = "COST",
+          usage = "Variable cost model.")
+    public Boolean variable_cost = false;
+
   @Option(name = "-w", aliases = {"--width"}, metaVar = "WIDTH",
           usage = "Width of the simulation bounding box (m).")
     public double width = 50000.0;
@@ -15,7 +22,7 @@ public class CognitiveRadioTopologyControlOptions {
 
   @Option(name = "-n", aliases = {"--nodes"}, metaVar = "NODES",
           usage = "Number of nodes in the base network.")
-    public int relays = 25;
+    public int relays = 50;
 
   @Option(name = "-s", aliases = {"--seed"}, metaVar = "SEED",
           usage = "Specify the random seed, defaults to a random seed.")
@@ -23,11 +30,11 @@ public class CognitiveRadioTopologyControlOptions {
 
   @Option(name = "-u", aliases = {"--users"}, metaVar = "USERS",
           usage = "Number of users in the network")
-    public int subscribers = 5;
+    public int subscribers = 25;
   
   @Option(name = "-c", aliases = {"--channels"}, metaVar = "CHANNELS",
          usage = "Specify the number of channels available for each frequency.")
-    public int channels = 3;
+    public int channels = 6;
 
   @Option(name = "-p", aliases = {"--channelProb"}, metaVar = "CHANNELPROB",
          usage = "Specify the availability probability of each of channel.")

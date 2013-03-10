@@ -51,6 +51,75 @@ public class CognitiveRadioTopologyControl {
 		return (true);
 	}
 
+	public static Vertex find_gw(Network network) {
+		for (Object o: network.getVertices()) {
+			Vertex v = (Vertex)o;
+			if (v.isGateway) {
+				v.type = 0;
+				return(v);
+			}
+		}
+		return(null);
+	}
+
+	public static int compute_coverage(List<Vertex> available, Vector<Vertex> inRange) {
+		HashSet s1 = new HashSet(available);
+		HashSet s2 = new HashSet(inRange);
+
+		s1.retainAll(s2);
+		return(s1.size());
+	}
+
+	public static List<Vertex> in_range(Network network, Vertex v) {
+		// Build a coverage map
+		Vector<Vertex> inRange = new Vector<Vertex>();
+
+		double range = v.calculateRange();
+		for(Object p: network.getVertices()) {
+			Vertex m = (Vertex)p;
+			if (v.distanceTo(m) < range && network.findEdge(v,m) != null) {
+				inRange.add(m);
+			}
+		}
+		return(inRange);
+	}
+
+	public static List<Vertex> find_aps(Network network, int count) {
+		Vector<Vertex> aps = new Vector<Vertex>();
+		HashMap coverage = new HashMap();
+		Vector<Vertex> inRange = new Vector<Vertex>();
+
+		// Build a coverage map
+		for(Object o: network.getVertices()) {
+			Vertex n = (Vertex)o;
+			coverage.put(n, in_range(network, n));
+		}
+
+		Vector<Vertex> available = new Vector<Vertex>(network.getVertices());
+		while (count > 0 && available.size() > 0) {
+			int max_coverage = 0;
+			Vertex choice = null;
+			for(Object i: coverage.keySet()) {
+				Vertex v = (Vertex)i;
+				inRange = (Vector<Vertex>)coverage.get(v);
+				int c = compute_coverage(available, inRange);
+				if (c > max_coverage && ! v.isGateway) {
+					max_coverage = c;
+					choice = v;
+				}
+			}
+			choice.isAP = true;
+			choice.type = 1;
+			aps.add(choice);
+			count -= 1;
+			for(Object n: (Vector<Vertex>)coverage.get(choice)) {
+				Vertex v = (Vertex)n;
+				available.remove(v);
+			}
+		}
+		return(aps);
+	}
+
 	public static HashMap enumerate_cliques(Network network) {
 		HashMap clique_list = new HashMap();
 
@@ -151,6 +220,8 @@ public class CognitiveRadioTopologyControl {
 			options.seed = System.nanoTime();
 		}
 
+		options.height = options.width;
+
 		do {
 			if (find_seed) {
 				options.seed++;
@@ -172,7 +243,6 @@ public class CognitiveRadioTopologyControl {
 			// Set all edge and vertex types to 0
 			for (Object o : network.getVertices()) {
 				Vertex v = (Vertex) o;
-				v.type = 0;
 			}
 			for (Object o : network.getEdges()) {
 				Edge e = (Edge) o;
@@ -281,12 +351,17 @@ public class CognitiveRadioTopologyControl {
 			demand1[e.id] = 0.0d;
 			demand2[e.id] = 0.0d;
 		}
-		// Select a random set of (s,t) and set the connection requests along that path to 2e7
-		for (int i = 0; i < NUM_PATHS; i++) {
-			Vertex s = network.getVertex(network.random.nextInt(network.getVertexCount()));
-			Vertex t = network.getVertex(network.random.nextInt(network.getVertexCount()));
-			// System.out.println("(s,t): " + s + ","+t+ "["+network.getVertexCount()+"]");
-			if (s != t && s != null && t != null) {
+
+		// Find the gateway
+		Vertex gw = find_gw(network);
+
+		if (options.aps > 0){
+			// for each ap, get the path (gw, ap_i)
+			int i = 0;
+			for (Object ap: find_aps(network, options.aps)) {
+				Vertex s = gw;
+				Vertex t = (Vertex)ap;
+				// double demand = 0.5*(DEMAND * in_range(network, t).size());
 				List<Edge> spath = dspath.getPath(s,t);
 				paths.put(i, spath);
 				if (options.verbose) {
@@ -310,11 +385,44 @@ public class CognitiveRadioTopologyControl {
 						demand2[e.id] += DEMAND;
 					}
 				}
-			} else {
-				i--;
+				i += 1;
+			}
+		} else {
+			// Select a random set of (s,t) and set the connection requests along that path to 2e7
+			for (int i = 0; i < NUM_PATHS; i++) {
+				Vertex s = network.getVertex(network.random.nextInt(network.getVertexCount()));
+				Vertex t = network.getVertex(network.random.nextInt(network.getVertexCount()));
+				// System.out.println("(s,t): " + s + ","+t+ "["+network.getVertexCount()+"]");
+				if (s != t && s != null && t != null) {
+					// List<Edge> spath = dspath.getPath(s,t);
+					List<Edge> spath = dspath.getPath(gw,t);
+					paths.put(i, spath);
+					if (options.verbose) {
+						System.out.println("MST Path #"+i+": ("+s+","+t+") :"+spath);
+					}
+					for(Object o: spath) {
+						Edge e = (Edge)o;
+						demand1[e.id] += DEMAND;
+					}
+					if (options.backup) {
+						List<Edge> spath2 = dspath2.getPath(gw,t);
+						spaths.put(i, spath2);
+						if (options.verbose) {
+							System.out.println("MST2 Path #"+i+": ("+s+","+t+") :"+spath2);
+						}
+						for(Object o: spath2) {
+							Edge e = (Edge)o;
+							if (options.verbose) {
+								System.out.println("Edge: "+e.id+" ["+network.getEdgeCount()+"]");
+							}
+							demand2[e.id] += DEMAND;
+						}
+					}
+				} else {
+					i--;
+				}
 			}
 		}
-
 		// go over all the nxn nodes and find the throughput using rcs
 		for (Object o : network.getVertices()) {
 			Vertex source = (Vertex) o;
@@ -345,40 +453,9 @@ public class CognitiveRadioTopologyControl {
 			}
 		}
 
-		// Print out the conflict graph
-		// for(int i = 0; i < network.getEdgeCount() + 1; i++) {
-		//     for(int j = 0; j < network.getEdgeCount() + 1; j++) {
-		//         for (int k = 0; k < network.numChannels * 3 + 1; k++) {
-		//             System.out.println("("+i+","+j+","+k+") = "+network.interferes[i][j][k]);
-		//         }
-		//     }
-		// }
-
 		// Initialize a hash of cliques by channel, the value is a set so we don't get duplicates
 		// indexed by edge, then channel, then a list of cliques
 		HashMap clique_list = enumerate_cliques(network);
-
-		// if (options.verbose) {
-		// 	//Print out all cliques to make sure we're good
-		// 	for (Object o : network.getEdges()) {
-		// 		Edge e = (Edge) o;
-		// 		HashMap edge_cliques = (HashMap) clique_list.get(e.id);
-		// 		for (int k = 0; k < network.numChannels * 3; k++) {
-		// 			System.out.println("Cliques involving Edge: " + e.id + " using channel " + k + ":");
-		// 			// Keys are size, values are a list of cliques of that size
-		// 			HashMap cliques_of_size_key = (HashMap) edge_cliques.get(k);
-		// 			if (cliques_of_size_key != null) {
-		// 				for (Object t : cliques_of_size_key.keySet()) {
-		// 					Integer size = (Integer) t;
-		// 					HashSet clique = (HashSet) cliques_of_size_key.get(size);
-		// 					System.out.print("\t[ Size: " + size + " #: " + clique.size() + "] ");
-		// 					System.out.println(clique);							
-		// 				}
-		// 			}
-		// 		}
-		// 	}
-		// }
-
 
 		// Build ILP
 		try {
@@ -438,17 +515,31 @@ public class CognitiveRadioTopologyControl {
 			// Objective function in Equation 3 - Minimize Overall Channel Costs
 			IloLinearNumExpr cost = cplex.linearNumExpr();
 
+			// Costs for ubiquity hardware:
+			// 900MHz - $170, 2.4GHz - $85, 5GHz - $290
+			// 900 MHz = 2.0, 2.4GHz = 1.0, 5GHz - 3.0
 			// Initialize Channel Costs: Channel costs are all the same 1.0 for now
 			double[] channel_costs = new double[network.numChannels * 3];
 			for (int k = 0; k < network.numChannels * 3; k++) {
                 if (k % 3 == 0) {
-                	channel_costs[k] = 1.0;
+                	// 700/900
+     				if (options.variable_cost) {
+	                	channel_costs[k] = 2.0;
+	                } else {
+	                	channel_costs[k] = 1.0;
+	                }
                 }
                 if (k % 3 == 1) {
+                	// 2.4/3.0
                 	channel_costs[k] = 1.0;
                 }
                 if (k % 3 == 2) {
-                	channel_costs[k] = 1.0;
+                	// 5.0
+                	if (options.variable_cost) {
+	                	channel_costs[k] = 3.0;
+                	} else {
+	                	channel_costs[k] = 1.0;
+                	}
                 }
 			}
 
@@ -607,11 +698,16 @@ public class CognitiveRadioTopologyControl {
 				}
 			}
 
-			// Write the model out to validate
-			cplex.exportModel(fname+".lp");
-			cplex.setOut(null);
+
+			if (options.verbose) {
+				// Write the model out to validate
+				cplex.exportModel(fname+".lp");
+			} else {
+				cplex.setOut(null);
+			}
 
 			if (cplex.solve()) {
+
 				double cplexTotal = cplex.getObjValue();
 
 				List<Edge> elist2 = new ArrayList<Edge>(network.getEdges());
@@ -655,9 +751,21 @@ public class CognitiveRadioTopologyControl {
 					drawing.draw();
 				}
 
-				System.out.println("Seed, Width, Height, Nodes, Users, Channels, Cost");
-				System.out.println(options.seed + ", " + options.width + ", " + options.height + ", " + options.relays + ", " +
-					options.subscribers + ", " + options.channels + ", "+ cplexTotal);
+				System.out.println("Variation, Seed, Width, Height, Nodes, Users, Channels, APs, Cost");
+				String variation = null;
+				if (options.backup) {
+					variation = "mst2";
+					if (options.variable_cost) {
+						variation += "-vc";
+					}
+				} else {
+					variation = "mst";
+					if (options.variable_cost) {
+						variation += "-vc";
+					}
+				}
+				System.out.println(variation + ", " +options.seed + ", " + options.width + ", " + options.height + ", " + options.relays + ", " +
+					options.subscribers + ", " + options.channels + ", "+ options.aps + ", " + cplexTotal);
 
 			} else {
 				System.out.println("Couldn't solve problem!");
