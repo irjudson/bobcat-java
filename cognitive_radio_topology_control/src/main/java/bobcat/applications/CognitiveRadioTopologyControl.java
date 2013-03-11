@@ -23,28 +23,17 @@ public class CognitiveRadioTopologyControl {
 
     static int MAX_CLIQUE_SIZE = 4;
 
-    public static Boolean grows_clique(HashSet clique, Edge edge, Network network, int channel) {
-
-	if (clique.size() > network.getEdgeCount()) {
-	    // System.out.println("Clique already max size.");
-	    return (false);
-	}
-
-	if (edge.channels[channel] <= 1.0) {
-	    // System.out.println("Edge has no throughput.");
-	    return (false);
-	}
-
+    public static Boolean grows_clique(HashSet clique, Edge edge, 
+				       Network network, int channel) {
+	if (clique.size() > network.getEdgeCount()) { return (false); }
+	if (edge.channels[channel] <= 1.0) { return (false); }
 	for (Object o : clique) {
 	    Edge e = (Edge) o;
 
-	    if (e.id == edge.id) {
-		// System.out.println("Clique already contains edge.");
-		return (false);
-	    }
+	    if (e.id == edge.id) { return (false); }
 
-	    if ((!network.interferes[e.id][edge.id][channel]) && (!network.interferes[edge.id][e.id][channel])) {
-		// System.out.println("No interference for the edge/clique on this channel.");
+	    if ((!network.interferes[e.id][edge.id][channel]) 
+		&& (!network.interferes[edge.id][e.id][channel])) {
 		return (false);
 	    }
 	}
@@ -62,10 +51,10 @@ public class CognitiveRadioTopologyControl {
 	return(null);
     }
 
-    public static int compute_coverage(List<Vertex> available, Vector<Vertex> inRange) {
+    public static int compute_coverage(List<Vertex> available, 
+				       Vector<Vertex> inRange) {
 	HashSet s1 = new HashSet(available);
 	HashSet s2 = new HashSet(inRange);
-
 	s1.retainAll(s2);
 	return(s1.size());
     }
@@ -73,7 +62,6 @@ public class CognitiveRadioTopologyControl {
     public static List<Vertex> in_range(Network network, Vertex v) {
 	// Build a coverage map
 	Vector<Vertex> inRange = new Vector<Vertex>();
-
 	double range = v.calculateRange();
 	for(Object p: network.getVertices()) {
 	    Vertex m = (Vertex)p;
@@ -140,7 +128,6 @@ public class CognitiveRadioTopologyControl {
 
 		    clique.add(e);
 		    cliques.add(new HashSet(clique));
-		    // System.out.println("Adding clique of size 1 for channel: "+k+" ("+e.channels[k]+") "+clique);
 		    size_cliques.put(1, new HashSet(cliques));
 		    cliques.clear();
 
@@ -165,10 +152,7 @@ public class CognitiveRadioTopologyControl {
 				    if (cliqueCopy.size() == i) {
 					// Store a copy under this size list
 					cliques.add(cliqueCopy);
-					// System.out.println("New clique of size: " + i + " " + cliqueCopy);
 				    }
-				} else {
-				    // System.out.println("Adding "+edge+" doesn't grow clique "+clique);
 				}
 			    }
 			}
@@ -178,9 +162,6 @@ public class CognitiveRadioTopologyControl {
 		    // store cliques
 		    channel_cliques.put(k, new HashMap(size_cliques));
 		    size_cliques.clear();
-		} else {
-		    // System.out.println("No clique for edge with no throughput.");
-		    // System.out.println("Edge "+e.id+ " Channel "+k + ": "+e.channels[k]);
 		}
 	    }
 	    // roll out of the loop, storing results
@@ -228,8 +209,12 @@ public class CognitiveRadioTopologyControl {
 	    }
 
 	    Random gen = new Random(options.seed);
-	    networkGenerator = Network.getGenerator(options.relays, options.subscribers, options.width, 
-						    options.height, gen, options.channels, options.channelProb);
+	    networkGenerator = Network.getGenerator(options.relays, 
+						    options.subscribers, 
+						    options.width, 
+						    options.height, gen, 
+						    options.channels, 
+						    options.channelProb);
 
 	    network = networkGenerator.create();
 
@@ -266,13 +251,17 @@ public class CognitiveRadioTopologyControl {
 		Edge e = (Edge)o;
 		network.addEdge(e, primTree.getIncidentVertices(e));
 	    }
-	} while (network.getVertexCount() == 0 || network.getVertexCount() != primTree.getVertexCount() || network.getVertexCount() != dprimTree.getVertexCount());
+	} while (network.getVertexCount() == 0 
+		 || network.getVertexCount() != primTree.getVertexCount() 
+		 || network.getVertexCount() != dprimTree.getVertexCount());
 
-	String fname = "CRTC-"+options.seed+"-"+options.width+"-"+options.relays+"-"+options.subscribers+"-"+options.channels;
+	String fname = "CRTC-"+options.seed+"-"+options.width+"-"
+	    +options.relays+"-"+options.subscribers+"-"+options.channels;
 
 	if (options.output) {
 	    try {
-		System.setOut(new PrintStream(new FileOutputStream(fname+".out")));
+		String fn = fname+".out";
+		System.setOut(new PrintStream(new FileOutputStream(fn)));
 	    } catch (FileNotFoundException e) {
 		System.out.println("Failed to redirect output to file.");
 	    }
@@ -297,34 +286,21 @@ public class CognitiveRadioTopologyControl {
 
 	Vector toRemove = new Vector();
 	for (Object e : network.getEdges()) {
-	    if (! edges_to_save.contains(e)) {
-		toRemove.addElement(e);				
-	    }
+	    if (! edges_to_save.contains(e)) { toRemove.addElement(e); }
 	}
-
-	for (Object e : toRemove) {
-	    network.removeEdge((Edge) e);
-	}
+	for (Object e : toRemove) { network.removeEdge((Edge) e); }
 
 	// Renumber nodes
 	List<Vertex> nodes = new ArrayList<Vertex>(network.getVertices());
 	Collections.sort(nodes);
 	int nid = 0;
-	for(Object o : nodes) {
-	    Vertex v = (Vertex)o;
-	    v.id = nid;
-	    nid += 1;
-	}
+	for(Object o : nodes) { Vertex v = (Vertex)o; v.id = nid; nid += 1; }
 
 	// Renumber edges
 	List<Edge> elist = new ArrayList<Edge>(network.getEdges());
 	Collections.sort(elist);
 	int eid = 0;
-	for (Object o : elist) {
-	    Edge e = (Edge) o;
-	    e.setId(eid);
-	    eid += 1;
-	}
+	for (Object o : elist) { Edge e = (Edge) o; e.setId(eid); eid += 1; }
 
 	if (options.verbose) {
 	    System.out.println("Prim Tree: ");
@@ -341,6 +317,8 @@ public class CognitiveRadioTopologyControl {
 	DijkstraShortestPath<Vertex, Edge> dspath = new DijkstraShortestPath(primTree);
 	DijkstraShortestPath<Vertex, Edge> dspath2 = new DijkstraShortestPath(dprimTree);
 
+	
+	Double[] overflow = new Double[network.getEdgeCount()];
 	Double[] demand1 = new Double[network.getEdgeCount()];
 	Double[] demand2 = new Double[network.getEdgeCount()];
 	HashMap paths = new HashMap();
@@ -348,6 +326,7 @@ public class CognitiveRadioTopologyControl {
 
 	for(Object o : network.getEdges()) {
 	    Edge e = (Edge)o;
+	    overflow[e.id] = 0.0d;
 	    demand1[e.id] = 0.0d;
 	    demand2[e.id] = 0.0d;
 	}
@@ -364,7 +343,8 @@ public class CognitiveRadioTopologyControl {
 		List<Edge> spath = dspath.getPath(s,t);
 		paths.put(i, spath);
 		if (options.verbose) {
-		    System.out.println("MST Path #"+i+": ("+s+","+t+") :"+spath);
+		    System.out.println("MST Path #"+i+": ("+s+","+t+") :"
+				       + spath);
 		}
 		for(Object o: spath) {
 		    Edge e = (Edge)o;
@@ -374,12 +354,14 @@ public class CognitiveRadioTopologyControl {
 		    List<Edge> spath2 = dspath2.getPath(s,t);
 		    spaths.put(i, spath2);
 		    if (options.verbose) {
-			System.out.println("MST2 Path #"+i+": ("+s+","+t+") :"+spath2);
+			System.out.println("MST2 Path #"+i+": ("+s+","+t+") :"
+					   + spath2);
 		    }
 		    for(Object o: spath2) {
 			Edge e = (Edge)o;
 			if (options.verbose) {
-			    System.out.println("Edge: "+e.id+" ["+network.getEdgeCount()+"]");
+			    System.out.println("Edge: "+e.id+" ["
+					       +network.getEdgeCount()+"]");
 			}
 			demand2[e.id] += DEMAND;
 		    }
@@ -387,17 +369,17 @@ public class CognitiveRadioTopologyControl {
 		i += 1;
 	    }
 	} else {
-	    // Select a random set of (s,t) and set the connection requests along that path to 2e7
+	    // Select a random set of (s,t) and set the connection
+	    // requests along that path to 2e7
 	    for (int i = 0; i < NUM_PATHS; i++) {
 		Vertex s = network.getVertex(network.random.nextInt(network.getVertexCount()));
 		Vertex t = network.getVertex(network.random.nextInt(network.getVertexCount()));
-		// System.out.println("(s,t): " + s + ","+t+ "["+network.getVertexCount()+"]");
 		if (s != t && s != null && t != null) {
-		    // List<Edge> spath = dspath.getPath(s,t);
 		    List<Edge> spath = dspath.getPath(gw,t);
 		    paths.put(i, spath);
 		    if (options.verbose) {
-			System.out.println("MST Path #"+i+": ("+s+","+t+") :"+spath);
+			System.out.println("MST Path #"+i+": ("+s+","+t+") :"
+					   + spath);
 		    }
 		    for(Object o: spath) {
 			Edge e = (Edge)o;
@@ -407,12 +389,15 @@ public class CognitiveRadioTopologyControl {
 			List<Edge> spath2 = dspath2.getPath(gw,t);
 			spaths.put(i, spath2);
 			if (options.verbose) {
-			    System.out.println("MST2 Path #"+i+": ("+s+","+t+") :"+spath2);
+			    System.out.println("MST2 Path #"+i+": ("+s+"," 
+					       + t +") :"+spath2);
 			}
 			for(Object o: spath2) {
 			    Edge e = (Edge)o;
 			    if (options.verbose) {
-				System.out.println("Edge: "+e.id+" ["+network.getEdgeCount()+"]");
+				System.out.println("Edge: "+e.id+" ["
+						   + network.getEdgeCount()
+						   +"]");
 			    }
 			    demand2[e.id] += DEMAND;
 			}
@@ -427,8 +412,10 @@ public class CognitiveRadioTopologyControl {
 	    System.out.println(network.getEdgeCount() + " Edges");
 	    for (Object e : network.getEdges()) {
 		Edge z = (Edge)e;
-		System.out.println("\t" + z + " Bottleneck Capacity: " + z.bottleNeckCapacity() +
-				   " Demand (MST): "+demand1[z.id]+ " Demand (MST2): "+demand2[z.id]);
+		System.out.println("\t" + z + " Bottleneck Capacity: " 
+				   + z.bottleNeckCapacity() 
+				   + " Demand (MST): "+demand1[z.id]
+				   + " Demand (MST2): "+demand2[z.id]);
 	    }
 	}
 
@@ -436,324 +423,388 @@ public class CognitiveRadioTopologyControl {
 	// so we don't get duplicates indexed by edge, then channel,
 	// then a list of cliques
 	HashMap clique_list = enumerate_cliques(network);
-
+	
 	// Build ILP
 	try {
+	    Double cplexTotal = Double.MAX_VALUE;
 	    IloCplex cplex = new IloCplex();
+	    Boolean solved = false;
+	    while (cplexTotal > 0.0d && ! solved) {
+		System.out.println("Total: " + cplexTotal);
 
-	    // Variable Definitions for ILP
-	    // c
-	    IloIntVar[] c = new IloIntVar[network.numChannels * 3];
-	    for (int i = 0; i < network.numChannels * 3; i++) {
-		c[i] = cplex.intVar(0, 1, "c(" + i + ")");
-	    }
-
-	    // x
-	    IloIntVar[][][] x = new IloIntVar[network.getEdgeCount()][network.numChannels * 3][MAX_CLIQUE_SIZE];
-	    for (Object o : network.getEdges()) {
-		Edge e = (Edge) o;
-		for (int k = 0; k < network.numChannels * 3; k++) {
-		    for (int tc = 1; tc < MAX_CLIQUE_SIZE; tc++) {
-			// System.out.println(x.length+","+x[0].length+","+x[0][0].length+ "  "+e.id+","+k+","+tc);
-			x[e.id][k][tc] = cplex.intVar(0, 1, "x(" + e.id + ")(" + k + ")(" + tc + ")");
-		    }
-		}
-	    }
-
-	    // D
-	    Double[][][] D = new Double[network.getEdgeCount()][network.numChannels * 3][MAX_CLIQUE_SIZE];
-	    for (Object o : network.getEdges()) {
-		Edge e = (Edge) o;
-		for (int k = 0; k < network.numChannels * 3; k++) {
-		    for (int size = 1; size < MAX_CLIQUE_SIZE; size++) {
-			if (e.channels[k] >= 0) {
-			    D[e.id][k][size] = e.channels[k] / size;	
-			} else {
-			    D[e.id][k][size] = 0.0d;
-			}
-		    }
-		}
-	    }
-
-	    // d
-	    IloNumVar[] d1 = new IloNumVar[NUM_PATHS];
-	    IloNumVar[] d2 = new IloNumVar[NUM_PATHS];
-	    for (int i = 0; i < NUM_PATHS; i++) {
-		d1[i] = cplex.numVar(0.0, Double.MAX_VALUE, "d1("+i+")");
-		d2[i] = cplex.numVar(0.0, Double.MAX_VALUE, "d2("+i+")");
-	    }
-
-	    // y
-	    IloIntVar[][] y = new IloIntVar[network.getEdgeCount()][network.numChannels * 3];
-	    for (Object o : network.getEdges()) {
-		Edge e = (Edge) o;
-		for (int k = 0; k < network.numChannels * 3; k++) {
-		    y[e.id][k] = cplex.intVar(0, 1, "y(" + e.id + ")(" + k + ")");
-		}
-	    }
-
-	    // Objective function in Equation 3 - Minimize Overall Channel Costs
-	    IloLinearNumExpr cost = cplex.linearNumExpr();
-
-	    // Costs for ubiquity hardware:
-	    // 900MHz - $170, 2.4GHz - $85, 5GHz - $290
-	    // 900 MHz = 2.0, 2.4GHz = 1.0, 5GHz - 3.0
-	    // Initialize Channel Costs: Channel costs are all the same 1.0 for now
-	    double[] channel_costs = new double[network.numChannels * 3];
-	    for (int k = 0; k < network.numChannels * 3; k++) {
-                if (k % 3 == 0) {
-		    // 700/900
-		    if (options.variable_cost) {
-			channel_costs[k] = 2.0;
-		    } else {
-			channel_costs[k] = 1.0;
-		    }
-                }
-                if (k % 3 == 1) {
-		    // 2.4/3.0
-		    channel_costs[k] = 1.0;
-                }
-                if (k % 3 == 2) {
-		    // 5.0
-		    if (options.variable_cost) {
-			channel_costs[k] = 3.0;
-		    } else {
-			channel_costs[k] = 1.0;
-		    }
-                }
-	    }
-
-	    // Objective: Minimize channel costs 
-	    // Channel usage array (Number of edges * number of channels per edge)
-	    for (int k = 0; k < network.numChannels * 3; k++) {
-		cost.addTerm(channel_costs[k], c[k]);
-	    }
-	    IloObjective objective = cplex.minimize(cost);
-	    cplex.add(objective);
-	    if (options.verbose) {
-		System.out.println("Objective : "+cost);
-
-		// Constraint 1:
-		System.out.println("Constraint 1:");
-	    }
-
-	    for (Object o : network.getEdges()) {
-		Edge e = (Edge) o;
-		for (int k = 0; k < network.numChannels * 3; k++) {
-		    // Sum acros clique sizes
-		    IloNumExpr irj = cplex.numExpr();
-		    irj = x[e.id][k][1];
-		    for (int tc = 2; tc < MAX_CLIQUE_SIZE; tc++) {
-			irj = cplex.sum(x[e.id][k][tc], irj);
-		    }
-		    if (options.verbose) {
-			System.out.println("\t"+y[e.id][k] + " = " + irj);
-			System.out.println("\t"+y[e.id][k] + " <= " + c[k]);
-		    }
-		    cplex.addEq(y[e.id][k], irj);
-		    cplex.addLe(y[e.id][k], c[k]);
-		}
-	    }
-
-	    if (options.verbose) {
-		// Constraint 2: 
-		System.out.println("Constraint 2:");
-	    }
-	    for (Object o : network.getEdges()) {
-		Edge e = (Edge) o;
-		for (int k = 0; k < network.numChannels * 3; k++) {
-		    // Sum acros clique sizes
-		    IloNumExpr irj = cplex.numExpr();
-		    irj = x[e.id][k][1];
-		    for (int tc = 2; tc < MAX_CLIQUE_SIZE; tc++) {
-			irj = cplex.sum(x[e.id][k][tc], irj);
-		    }
-		    if (options.verbose) {
-			System.out.println("\t"+irj+" <= " + 1);
-		    }
-		    cplex.addLe(irj, 1);
-		}
-	    }
-
-	    if (options.verbose) {
-		// Constraint 3:
-		System.out.println("Constraint 3:");
-	    }
-	    // Make interim data structure to make this easier
-	    HashMap cl = new HashMap();
-	    for (Object o : network.getEdges()) {
-		Edge e = (Edge) o;
-		HashMap edge_cliques = (HashMap) clique_list.get(e.id);
-		for (int k = 0; k < network.numChannels * 3; k++) {
-		    HashMap cliques_of_size = (HashMap)edge_cliques.get(k);
-		    if (cliques_of_size != null) {
-			for (int c1 = 1; c1 < MAX_CLIQUE_SIZE; c1++) {
-			    HashSet cliques = (HashSet)cliques_of_size.get(c1);
-			    HashSet cls = (HashSet)cl.get(k);
-			    if (cls == null) {
-				cl.put(k, new HashSet(cliques));
-			    } else {
-				cls.addAll(cliques);
-				cl.put(k, cls);
-			    }
-			}
-		    }
-		}
-	    }
-
-	    for (int k = 0; k < network.numChannels * 3; k++) {
-		HashSet cliques = (HashSet)cl.get(k);
-		if (cliques != null) {
-		    for (Object o : cliques) {
-			HashSet clique = (HashSet)o;
-			IloNumExpr cs2 = cplex.numExpr();
-			Object[] cl2 = clique.toArray();
-			Edge xx = (Edge)cl2[0];
-			cs2 = y[xx.id][k];
-			for (int i = 1; i < clique.size(); i++) {
-			    Edge xxx = (Edge)cl2[i];
-			    cs2 = cplex.sum(y[xxx.id][k], cs2);
-			}
-			IloNumExpr c8 = cplex.diff(clique.size(), cs2);
-			for (Object p : clique) {
-			    Edge e = (Edge)p;
-			    for (int i = 1; i < clique.size() - 1; i++) {
-				if (options.verbose) {
-				    System.out.println("\t"+x[e.id][k][i] + " <= " + c8);
-				}
-				cplex.addLe(x[e.id][k][i], c8);
-			    }
-			}
-		    }
-		}
-	    }
-
-	    if (options.verbose) {
-		// Constraint 4: Total capacity constraint
-		System.out.println("Constraint 4:");
-	    }
-	    for (Object zz : network.getEdges()) {
-		Edge e = (Edge) zz;
-		IloNumExpr lhs = cplex.numExpr();
-		for (int k = 0; k < network.numChannels * 3; k++) {
-		    for (int tc = 1; tc < MAX_CLIQUE_SIZE; tc++) {
-			lhs = cplex.sum(cplex.prod(D[e.id][k][tc], x[e.id][k][tc]), lhs);
-		    }
+		// Variable Definitions for ILP
+		// c
+		IloIntVar[] c = new IloIntVar[network.numChannels * 3];
+		for (int i = 0; i < network.numChannels * 3; i++) {
+		    c[i] = cplex.intVar(0, 1, "c(" + i + ")");
 		}
 
-		if (options.backup) {
-		    IloNumExpr rhs = cplex.numExpr();
-		    for (int i = 0; i < NUM_PATHS; i++) {
-			List<Edge> p = (List<Edge>)paths.get(i);
-			List<Edge>sp = (List<Edge>)spaths.get(i);
-			if (p.contains(e)) {
-			    rhs = cplex.sum(rhs, d1[i]);
-			}
-			if (sp.contains(e)) {
-			    rhs = cplex.sum(rhs, d2[i]);
-			}
-		    }
-		    cplex.addGe(lhs, rhs);
-		    // Calculate demand
-		    if (options.verbose) {
-			System.out.println("\t"+lhs + " >= "+ rhs);
-		    }
-		} else {
-		    Double rhs = demand1[e.id] + demand2[e.id];
-		    cplex.addGe(lhs, rhs);
-		    // Calculate demand
-		    if (options.verbose) {
-			System.out.println("\t"+lhs + " >= "+ rhs);
-		    }
-		}
-
-	    }
-
-	    if (options.backup) {
-		if (options.verbose) {
-		    System.out.println("Constraint 5:");
-		}
-		for(int i = 0; i < NUM_PATHS; i++) {
-		    cplex.addEq(cplex.sum(d1[i], d2[i]), DEMAND);
-		}
-	    }
-
-
-	    if (options.verbose) {
-		// Write the model out to validate
-		cplex.exportModel(fname+".lp");
-	    } else {
-		cplex.setOut(null);
-	    }
-
-	    if (cplex.solve()) {
-
-		double cplexTotal = cplex.getObjValue();
-
-		List<Edge> elist2 = new ArrayList<Edge>(network.getEdges());
-		Collections.sort(elist2);
-
-		for (Object o : elist2) {
+		// x
+		IloIntVar[][][] x = new IloIntVar[network.getEdgeCount()][network.numChannels * 3][MAX_CLIQUE_SIZE];
+		for (Object o : network.getEdges()) {
 		    Edge e = (Edge) o;
-		    double sum = 0.0;
 		    for (int k = 0; k < network.numChannels * 3; k++) {
 			for (int tc = 1; tc < MAX_CLIQUE_SIZE; tc++) {
-			    double value = cplex.getValue(x[e.id][k][tc]);
-			    if (value > 0) {
-				sum += D[e.id][k][tc];
-				System.out.println("\tEdge: "+e.id+" Channel: "+k+" Throughput: "+D[e.id][k][tc]);
+			    // 			System.out.println(x.length+","+x[0].length+","
+			    // 					   +x[0][0].length+ "  "+e.id+","
+			    // 					   +k+","+tc);
+			    x[e.id][k][tc] = cplex.intVar(0, 1, "x(" + e.id 
+							  + ")(" + k + ")(" 
+							  + tc + ")");
+			}
+		    }
+		}
+
+		// D
+		Double[][][] D = new Double[network.getEdgeCount()][network.numChannels * 3][MAX_CLIQUE_SIZE];
+		for (Object o : network.getEdges()) {
+		    Edge e = (Edge) o;
+		    for (int k = 0; k < network.numChannels * 3; k++) {
+			for (int size = 1; size < MAX_CLIQUE_SIZE; size++) {
+			    if (e.channels[k] >= 0) {
+				D[e.id][k][size] = e.channels[k] / size;	
+			    } else {
+				D[e.id][k][size] = 0.0d;
+			    }
+			}
+		    }
+		}
+
+		// o's
+		IloNumVar[] o = new IloNumVar[network.getEdgeCount()];
+		for (Object oe: network.getEdges()) {
+		    Edge e = (Edge)oe;
+		    o[e.id] = cplex.numVar(0.0, Double.MAX_VALUE, 
+					   "o("+e.id+")");
+		}
+	    
+		// O 
+		IloNumVar O = cplex.numVar(0.0, Double.MAX_VALUE, "O");
+	    
+		// d
+		IloNumVar[] d1 = new IloNumVar[NUM_PATHS];
+		IloNumVar[] d2 = new IloNumVar[NUM_PATHS];
+		for (int i = 0; i < NUM_PATHS; i++) {
+		    d1[i] = cplex.numVar(0.0, Double.MAX_VALUE, "d1("+i+")");
+		    d2[i] = cplex.numVar(0.0, Double.MAX_VALUE, "d2("+i+")");
+		}
+
+		// y
+		IloIntVar[][] y = new IloIntVar[network.getEdgeCount()][network.numChannels * 3];
+		for (Object of : network.getEdges()) {
+		    Edge e = (Edge) of;
+		    for (int k = 0; k < network.numChannels * 3; k++) {
+			y[e.id][k] = cplex.intVar(0, 1, "y(" + e.id + ")(" 
+						  + k + ")");
+		    }
+		}
+
+		// Objective function in Equation 3 - Minimize Overall
+		// Channel Costs
+
+		IloLinearNumExpr cost = cplex.linearNumExpr();
+
+		// Costs for ubiquity hardware:
+		// 900MHz - $170, 2.4GHz - $85, 5GHz - $290
+		// 900 MHz = 2.0, 2.4GHz = 1.0, 5GHz - 3.0
+		// Initialize Channel Costs: Channel costs are all the
+		// same 1.0 for now
+		double[] channel_costs = new double[network.numChannels * 3];
+		for (int k = 0; k < network.numChannels * 3; k++) {
+		    if (k % 3 == 0) {
+			// 700/900
+			if (options.variable_cost) {
+			    channel_costs[k] = 2.0;
+			} else {
+			    channel_costs[k] = 1.0;
+			}
+		    }
+		    if (k % 3 == 1) {
+			// 2.4/3.0
+			channel_costs[k] = 1.0;
+		    }
+		    if (k % 3 == 2) {
+			// 5.0
+			if (options.variable_cost) {
+			    channel_costs[k] = 3.0;
+			} else {
+			    channel_costs[k] = 1.0;
+			}
+		    }
+		}
+
+		IloObjective objective;
+		if (options.quick) {
+		    objective = cplex.minimize(O);
+		} else {
+		    // Objective: Minimize channel costs 
+		    // Channel usage array (Number of edges * number of
+		    // channels per edge)
+		    for (int k = 0; k < network.numChannels * 3; k++) {
+			cost.addTerm(channel_costs[k], c[k]);
+		    }
+		    objective = cplex.minimize(cost);
+		}
+		cplex.add(objective);
+		if (options.verbose) {
+		    System.out.println("Objective : " + objective);
+
+		    // Constraint 1:
+		    System.out.println("Constraint 1:");
+		}
+
+		for (Object og : network.getEdges()) {
+		    Edge e = (Edge) og;
+		    for (int k = 0; k < network.numChannels * 3; k++) {
+			// Sum acros clique sizes
+			IloNumExpr irj = cplex.numExpr();
+			irj = x[e.id][k][1];
+			for (int tc = 2; tc < MAX_CLIQUE_SIZE; tc++) {
+			    irj = cplex.sum(x[e.id][k][tc], irj);
+			}
+			if (options.verbose) {
+			    System.out.println("\t"+y[e.id][k] + " = " + irj);
+			    System.out.println("\t"+y[e.id][k] + " <= " + c[k]);
+			}
+			cplex.addEq(y[e.id][k], irj);
+			cplex.addLe(y[e.id][k], c[k]);
+		    }
+		}
+
+		if (options.verbose) {
+		    // Constraint 2: 
+		    System.out.println("Constraint 2:");
+		}
+		for (Object oh : network.getEdges()) {
+		    Edge e = (Edge) oh;
+		    for (int k = 0; k < network.numChannels * 3; k++) {
+			// Sum acros clique sizes
+			IloNumExpr irj = cplex.numExpr();
+			irj = x[e.id][k][1];
+			for (int tc = 2; tc < MAX_CLIQUE_SIZE; tc++) {
+			    irj = cplex.sum(x[e.id][k][tc], irj);
+			}
+			if (options.verbose) {
+			    System.out.println("\t"+irj+" <= " + 1);
+			}
+			cplex.addLe(irj, 1);
+		    }
+		}
+
+		if (options.verbose) {
+		    // Constraint 3:
+		    System.out.println("Constraint 3:");
+		}
+		// Make interim data structure to make this easier
+		HashMap cl = new HashMap();
+		for (Object oi : network.getEdges()) {
+		    Edge e = (Edge) oi;
+		    HashMap edge_cliques = (HashMap) clique_list.get(e.id);
+		    for (int k = 0; k < network.numChannels * 3; k++) {
+			HashMap cliques_of_size = (HashMap)edge_cliques.get(k);
+			if (cliques_of_size != null) {
+			    for (int c1 = 1; c1 < MAX_CLIQUE_SIZE; c1++) {
+				HashSet cliques = (HashSet)cliques_of_size.get(c1);
+				HashSet cls = (HashSet)cl.get(k);
+				if (cls == null) {
+				    cl.put(k, new HashSet(cliques));
+				} else {
+				    cls.addAll(cliques);
+				    cl.put(k, cls);
+				}
+			    }
+			}
+		    }
+		}
+
+		for (int k = 0; k < network.numChannels * 3; k++) {
+		    HashSet cliques = (HashSet)cl.get(k);
+		    if (cliques != null) {
+			for (Object oj : cliques) {
+			    HashSet clique = (HashSet)oj;
+			    IloNumExpr cs2 = cplex.numExpr();
+			    Object[] cl2 = clique.toArray();
+			    Edge xx = (Edge)cl2[0];
+			    cs2 = y[xx.id][k];
+			    for (int i = 1; i < clique.size(); i++) {
+				Edge xxx = (Edge)cl2[i];
+				cs2 = cplex.sum(y[xxx.id][k], cs2);
+			    }
+			    IloNumExpr c8 = cplex.diff(clique.size(), cs2);
+			    for (Object p : clique) {
+				Edge e = (Edge)p;
+				for (int i = 1; i < clique.size() - 1; i++) {
+				    if (options.verbose) {
+					System.out.println("\t"+x[e.id][k][i] 
+							   + " <= " + c8);
+				    }
+				    cplex.addLe(x[e.id][k][i], c8);
+				}
 			    }
 			}
 		    }
 		}
 
 		if (options.verbose) {
-		    for (Object o : network.getEdges()) {
-			Edge e = (Edge) o;
-			for (int k = 0; k < network.numChannels * 3; k++) {
-			    System.out.println("y("+e.id+")("+k+") = " + cplex.getValue(y[e.id][k]));
+		    // Constraint 4: Total capacity constraint
+		    System.out.println("Constraint 4:");
+		}
+		for (Object zz : network.getEdges()) {
+		    Edge e = (Edge) zz;
+		    IloNumExpr lhs = cplex.numExpr();
+		    for (int k = 0; k < network.numChannels * 3; k++) {
+			for (int tc = 1; tc < MAX_CLIQUE_SIZE; tc++) {
+			    if (options.quick) {
+				lhs = cplex.sum(cplex.sum(o[e.id],
+						  cplex.prod(D[e.id][k][tc], 
+						     x[e.id][k][tc])), lhs);
+			    } else {
+				lhs = cplex.sum(cplex.prod(D[e.id][k][tc], 
+							   x[e.id][k][tc]), lhs);
+			    }
 			}
 		    }
 
-		    for (int i = 0; i < network.numChannels * 3; i++) {
-			System.out.println("c("+i+") = "+cplex.getValue(c[i]));
+		    if (options.backup) {
+			IloNumExpr rhs = cplex.numExpr();
+			for (int i = 0; i < NUM_PATHS; i++) {
+			    List<Edge> p = (List<Edge>)paths.get(i);
+			    List<Edge>sp = (List<Edge>)spaths.get(i);
+			    if (p.contains(e)) {
+				rhs = cplex.sum(rhs, d1[i]);
+			    }
+			    if (sp.contains(e)) {
+				rhs = cplex.sum(rhs, d2[i]);
+			    }
+			}
+			cplex.addGe(lhs, rhs);
+			// Calculate demand
+			if (options.verbose) {
+			    System.out.println("\t"+lhs + " >= "+ rhs);
+			}
+		    } else {
+			Double rhs = demand1[e.id] + demand2[e.id];
+			cplex.addGe(lhs, rhs);
+			// Calculate demand
+			if (options.verbose) {
+			    System.out.println("\t"+lhs + " >= "+ rhs);
+			}
 		    }
+
 		}
 
-		if (options.verbose) {
-		    System.out.println("Solution status = " + cplex.getStatus());
-		}
-
-		// Show graph
-		if (options.display) {
-		    drawing = new Draw(network, 1024, 768,
-				       "Routing and Channel Selection Application");
-		    drawing.draw();
-		}
-
-		System.out.println("Variation, Seed, Width, Height, Nodes, Users, Channels, APs, Cost");
-		String variation = null;
 		if (options.backup) {
-		    variation = "mst2";
-		    if (options.variable_cost) {
-			variation += "-vc";
+		    if (options.verbose) {
+			System.out.println("Constraint 5:");
 		    }
-		} else {
-		    variation = "mst";
-		    if (options.variable_cost) {
-			variation += "-vc";
+		    for(int i = 0; i < NUM_PATHS; i++) {
+			cplex.addEq(cplex.sum(d1[i], d2[i]), DEMAND);
 		    }
 		}
-		System.out.println(variation + ", " +options.seed + ", " + options.width + ", " + options.height + ", " + options.relays + ", " +
-				   options.subscribers + ", " + options.channels + ", "+ options.aps + ", " + cplexTotal);
 
-	    } else {
-		System.out.println("Couldn't solve problem!");
+		if (options.quick) {
+		    // constraint on O/o's
+		    for (Object ok: network.getEdges()) {
+			Edge e = (Edge)ok;
+			cplex.addLe(o[e.id], O);
+		    }
+		}
+		if (options.verbose) {
+		    // Write the model out to validate
+		    cplex.exportModel(fname+".lp");
+		} else {
+		    cplex.setOut(null);
+		}
+
+		solved = cplex.solve();
+		if (solved) {
+		    cplexTotal = cplex.getObjValue();
+		    List<Edge> elist2 = new ArrayList<Edge>(network.getEdges());
+		    Collections.sort(elist2);
+		    for (Object ol : elist2) {
+			Edge e = (Edge) ol;
+			double sum = 0.0;
+			for (int k = 0; k < network.numChannels * 3; k++) {
+			    for (int tc = 1; tc < MAX_CLIQUE_SIZE; tc++) {
+				double value = cplex.getValue(x[e.id][k][tc]);
+				if (value > 0) {
+				    sum += D[e.id][k][tc];
+				    System.out.println("\tEdge: "+e.id
+						       +" Channel: "+k
+						       +" Throughput: "
+						       +D[e.id][k][tc]);
+				}
+			    }
+			}
+		    }
+
+		    List<Edge> el3 = new Vector<Edge>();
+		    for (Object xy: network.getEdges()) {
+			Edge e = (Edge)xy;
+			double value = cplex.getValue(o[e.id]);
+			if (value == cplexTotal) {
+			    // this one needs fixing!
+			    el3.add(e);
+			}
+		    }
+
+		    if (options.verbose) {
+			for (Object om : network.getEdges()) {
+			    Edge e = (Edge)om;
+			    for (int k = 0; k < network.numChannels * 3; k++) {
+				System.out.println("y("+e.id+")("+k+") = " 
+						   + cplex.getValue(y[e.id][k]));
+			    }
+			}
+
+			for (int i = 0; i < network.numChannels * 3; i++) {
+			    System.out.println("c("+i+") = "+cplex.getValue(c[i]));
+			}
+		    }
+
+		    if (options.verbose) {
+			System.out.println("Solution status = " 
+					   + cplex.getStatus());
+		    }
+
+		
+		    // Show graph
+		    if (options.display) {
+			drawing = new Draw(network, 1024, 768,
+					   "Routing and Channel Selection Application");
+			drawing.draw();
+		    }
+
+		    System.out.println("Variation, Seed, Width, Height, Nodes, Users, Channels, APs, Cost");
+		    String variation = null;
+		    if (options.backup) {
+			variation = "mst2";
+			if (options.variable_cost) {
+			    variation += "-vc";
+			}
+		    } else {
+			variation = "mst";
+			if (options.variable_cost) {
+			    variation += "-vc";
+			}
+		    }
+
+		    System.out.println(variation + ", " +options.seed + ", " 
+				       + options.width + ", " + options.height 
+				       + ", " + options.relays + ", " 
+				       + options.subscribers + ", " 
+				       + options.channels + ", "+ options.aps 
+				       + ", " + cplexTotal);
+
+		} else {
+		    System.out.println("Couldn't solve problem!");
+		    solved = true;
+		}
+		cplex.clearModel();
 	    }
 	    cplex.end();
 	} catch (IloException e) {
 	    System.err.println("Concert exception '" + e + "' caught.");
 	}
-
     }
 }

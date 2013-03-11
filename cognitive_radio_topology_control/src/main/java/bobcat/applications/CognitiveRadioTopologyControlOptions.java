@@ -63,4 +63,8 @@ public class CognitiveRadioTopologyControlOptions {
   @Option(name = "-o", aliases = {"--output"}, metaVar = "OUTPUT",
           usage = "Write output to a file.")
     public Boolean output = false;
+
+    @Option(name = "-q", aliases = {"--quick"}, metaVar = "QUICK",
+          usage = "run quick solve")
+    public Boolean quick = false;
 }

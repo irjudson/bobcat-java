@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
 
-export BOBCAT_HOME="/Users/ivan.judson/Personal/Phd/bobcat"
+export BOBCAT_HOME="/Users/judson/Old/Personal/Phd/bobcat"
 
-CPLEXPATH="/opt/ibm/ILOG/CPLEX_Studio_Academic123"
-CPLEXPATH="/opt/cplex"
-CPLEXARCH="x86_sles10_4.1"
-CPLEXARCH="x86-64_sles10_4.1"
-export CPLEXARCH="x86-64_darwin9_gcc4.0"
+# CPLEX Configuration
+CPLEXPATH="/opt/IBM/ILOG/CPLEX_Studio125"
+export CPLEXARCH="x86_darwin"
+
 export JLPATH="${CPLEXPATH}/cplex/bin/${CPLEXARCH}:${CPLEXPATH}/lib:${CPLEXPATH}/lib/${CPLEXARCH}"
 
-JAVA_OPTIONS="-Djava.library.path=${JLPATH} -Xmx4096m"
-export JAVA_OPTIONS="-Djava.library.path=${JLPATH} -Xmx4096m"
+export JAVA_OPTIONS="-Djava.library.path=${JLPATH} -Xmx1024m"
 
 alias java='java $JAVA_OPTIONS'
 
