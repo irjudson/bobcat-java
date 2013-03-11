@@ -2,16 +2,13 @@
 
 export BOBCAT_HOME="/Users/ivan.judson/Personal/Phd/bobcat"
 
-# CPLEX Configuration
 CPLEXPATH="/opt/ibm/ILOG/CPLEX_Studio_Academic123"
 CPLEXPATH="/opt/cplex"
 CPLEXARCH="x86_sles10_4.1"
 CPLEXARCH="x86-64_sles10_4.1"
 export CPLEXARCH="x86-64_darwin9_gcc4.0"
-
 export JLPATH="${CPLEXPATH}/cplex/bin/${CPLEXARCH}:${CPLEXPATH}/lib:${CPLEXPATH}/lib/${CPLEXARCH}"
 
-# Setting Java Options
 JAVA_OPTIONS="-Djava.library.path=${JLPATH} -Xmx4096m"
 export JAVA_OPTIONS="-Djava.library.path=${JLPATH} -Xmx4096m"
 
