@@ -10,13 +10,7 @@ export JLPATH="${CPLEXPATH}/cplex/bin/${CPLEXARCH}:${CPLEXPATH}/lib:${CPLEXPATH}
 JAVA_OPTIONS="-Djava.library.path=${JLPATH}"
 export JAVA_OPTIONS
 
-alias java='java -d32 -Djava.library.path=${JLPATH}'
-
-CPLEXPATH="/opt/IBM/ILOG/CPLEX_Studio125"
-export CPLEXARCH="x86_win32"
-export JLPATH="${CPLEXPATH}/cplex/bin/${CPLEXARCH}/:${CPLEXPATH}/cplex/lib/:${CPLEXPATH}/lib/${CPLEXARCH}/"
-
-export JAVA="java -d32 -Djava.library.path=${JLPATH}"
+export JAVA="java -Djava.library.path=${JLPATH}"
 
 # run the cognitive radio topology control simulation
 alias crtc='$JAVA -jar cognitive_radio_topology_control/target/cognitive_radio_topology_control-1.0-jar-with-dependencies.jar'

@@ -1,20 +1,21 @@
 #!/usr/bin/env bash
 #
 
-export BOBCAT_HOME="/Users/judson/Old/Personal/Phd/bobcat"
+export BOBCAT_HOME="~/bobcat"
 
 # CPLEX Configuration
 CPLEXPATH="/opt/IBM/ILOG/CPLEX_Studio125"
-export CPLEXARCH="x86_darwin"
+export CPLEXARCH="x86_win32"
 
 export JLPATH="${CPLEXPATH}/cplex/bin/${CPLEXARCH}:${CPLEXPATH}/lib:${CPLEXPATH}/lib/${CPLEXARCH}"
 
 # Setting Java Options
-JAVA_OPTIONS="-Djava.library.path=${JLPATH} -Xmx4096m"
-JAVA_OPTIONS="-Djava.library.path=${JLPATH} -Xmx2048m"
+JAVA_OPTIONS="-Djava.library.path=${JLPATH}"
 export JAVA_OPTIONS
 
-export CRTC="java $JAVA_OPTIONS -jar cognitive_radio_topology_control/target/cognitive_radio_topology_control-1.0-jar-with-dependencies.jar"
+alias java='java -d32 -Djava.library.path=${JLPATH}'
+
+export CRTC="java -jar cognitive_radio_topology_control/target/cognitive_radio_topology_control-1.0-jar-with-dependencies.jar"
 
 SUBSCRIBERS="10 20 30 40 50 60 70 80 90"
 SIZE="20000 30000 40000 50000 60000 70000 80000"
