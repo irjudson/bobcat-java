@@ -1,24 +1,12 @@
 #!/usr/bin/env bash
 
-# CPLEX Configuration
-CPLEXPATH="/opt/IBM/ILOG/CPLEX_Studio125"
-export CPLEXARCH="x86_win32"
-
-export JLPATH="${CPLEXPATH}/cplex/bin/${CPLEXARCH}:${CPLEXPATH}/lib:${CPLEXPATH}/lib/${CPLEXARCH}"
-
-# Setting Java Options
-JAVA_OPTIONS="-Djava.library.path=${JLPATH}"
-export JAVA_OPTIONS
-
-export JAVA="java -Djava.library.path=${JLPATH}"
-
 # run the cognitive radio topology control simulation
-alias crtc='$JAVA -jar cognitive_radio_topology_control/target/cognitive_radio_topology_control-1.0-jar-with-dependencies.jar'
+alias crtc='java -Xmx1024m -jar cognitive_radio_topology_control/target/cognitive_radio_topology_control-1.0-jar-with-dependencies.jar'
 # Run the cognitive radio topology control simulation in debug mode
-alias crtcd='$JAVA -jar cognitive_radio_topology_control/target/cognitive_radio_topology_control-1.0-jar-with-dependencies.jar -d -n 8 -v'
+alias crtcd='java -Xmx1024m -jar cognitive_radio_topology_control/target/cognitive_radio_topology_control-1.0-jar-with-dependencies.jar -d -n 8 -v'
 # Run the routing and channel selection simulation
-alias rcs='$JAVA -jar routing_channel_selection/target/routing_channel_selection-1.0-jar-with-dependencies.jar'
+alias rcs='java -Xmx1024m -jar routing_channel_selection/target/routing_channel_selection-1.0-jar-with-dependencies.jar'
 # Run the beam scheduling simulation
-alias bs='$JAVA -jar beam_scheduling/target/beam_scheduling-1.0-jar-with-dependencies.jar'
+alias bs='java -Xmx1024m -jar beam_scheduling/target/beam_scheduling-1.0-jar-with-dependencies.jar'
 # Run the directional antenna simulation
-alias da='$JAVA -jar directional_antennas/target/directional_antennas-1.0-jar-with-dependencies.jar'
+alias da='java -Xmx1024m -jar directional_antennas/target/directional_antennas-1.0-jar-with-dependencies.jar'
