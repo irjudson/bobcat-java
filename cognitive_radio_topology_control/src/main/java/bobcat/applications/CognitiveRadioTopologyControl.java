@@ -817,7 +817,7 @@ public class CognitiveRadioTopologyControl {
 			Double[] demand1, Double[]  demand2,
 			HashMap paths, HashMap spaths,
 			HashMap clique_list) {
-	Double O = 0.1d, O1 = 0.0d;
+	Double O = 0.001, O1 = 0.0d;
 	Double[] o, o1;
 	List<Edge> E, E1;
 	Integer[] A = new Integer[network.numChannels*3];
@@ -838,27 +838,20 @@ public class CognitiveRadioTopologyControl {
 	int outer_counter = 0;
 	outerloop:
 	while(O > 0) {
-	    System.out.println("1");
-
 	    o = makeILP(options, network, DEMAND, NUM_PATHS,
 			demand1, demand2, paths, spaths, clique_list, y);
-
 	    O = find_O(o);
 	    E = find_E(o, O, network.getEdges());
-	    System.out.println(E);
 	    Boolean foundimprovement = false;
-	    System.out.println("2");
 
 	    innerloop:
 	    for(Object oa: E) {
-		System.out.println("3");
+		System.out.println("Checking edge "+oa);
 		Edge e = (Edge)oa;
 		// check each existing channel
 		for(int i = 0; i < A.length; i++) {
-		    System.out.println("4");
 		    if (A[i] == 1) {
-			System.out.println("5");
-
+			System.out.println("Checking channel "+i);
 			y[e.id][i] = 1;
 			o1 = makeILP(options, network, DEMAND, NUM_PATHS,
 				     demand1, demand2, paths, spaths, 
@@ -866,33 +859,33 @@ public class CognitiveRadioTopologyControl {
 			O1 = find_O(o1);
 			E1 = find_E(o1, O1, network.getEdges());
 
-			System.out.println("2: O: "+O+" E: "+E.size()
-					   +" O1: "+O1+" E1: "+E1.size());
-			System.out.println("6");
+			System.out.println("E: "+E.size());
+			System.out.println("E1: "+E1.size());
+			System.out.println("O: "+o[e.id]);
+			System.out.println("O1: "+o1[e.id]);
+
 			if (E1.size()<E.size() 
-			    || (E1.size()==E.size() && O1<O)) {
-			    System.out.println("7");
+			    || (E1.size()==E.size() && O1 < O)) {
+			    System.out.println("Yep, going back to the start.");
 			    foundimprovement = true;
 			    break innerloop;
 			} else {
+			    System.out.println("Nope, checking next channel.");
 			    y[e.id][i] = 0;
 			}
 		    }
 		}
-		System.out.println("8");
+
+		System.out.println("No existing channels improve things.");
 		if (! foundimprovement) {
 		    System.out.println("9");
 		    for(int i = 0; i < A.length; i++) {
-			System.out.println("10");
 			if(A[i] == 0) {
-			    System.out.println("10");
-			    System.out.println("Setting channel: " + i);
+			    System.out.println("Turning on channel: " + i);
 			    A[i] = 1;
 			    break innerloop;
 			}
 		    }
-		    System.out.println("11");
-		    break innerloop;
 		}
 	    }
 	}
@@ -1093,11 +1086,11 @@ public class CognitiveRadioTopologyControl {
 		IloNumExpr lhs = cplex.numExpr();
 		for (int k = 0; k < network.numChannels * 3; k++) {
 		    for (int tc = 1; tc < MAX_CLIQUE_SIZE; tc++) {
-			lhs = cplex.sum(cplex.sum(o[e.id],
-						  cplex.prod(D[e.id][k][tc], 
-							     x[e.id][k][tc])), lhs);
+			lhs = cplex.sum(cplex.prod(D[e.id][k][tc], 
+						   x[e.id][k][tc]), lhs);
 		    }
 		}
+		lhs = cplex.sum(o[e.id], lhs);
 
 		if (options.backup) {
 		    IloNumExpr rhs = cplex.numExpr();
@@ -1146,26 +1139,22 @@ public class CognitiveRadioTopologyControl {
 
 	    if (cplex.solve()) {
 		cplexTotal = cplex.getObjValue();
-		for (Object xy: network.getEdges()) {
-		    Edge e = (Edge)xy;
-		    os[e.id] = cplex.getValue(o[e.id]);
-		    System.out.println("Edge: "+e.id+" "+os[e.id]);
-		}
-
 		List<Edge> elist2 = new ArrayList<Edge>(network.getEdges());
 		Collections.sort(elist2);
 		for (Object ol : elist2) {
 		    Edge e = (Edge) ol;
 		    double sum = 0.0;
+		    os[e.id] = cplex.getValue(o[e.id]);
 		    for (int k = 0; k < network.numChannels * 3; k++) {
 			for (int tc = 1; tc < MAX_CLIQUE_SIZE; tc++) {
 			    double value = cplex.getValue(x[e.id][k][tc]);
 			    if (value > 0) {
 				sum += D[e.id][k][tc];
-				System.out.println("\tEdge: "+e.id
+				System.out.println("Edge: "+e.id
 						   +" Channel: "+k
 						   +" Throughput: "
-						   +D[e.id][k][tc]);
+						   +D[e.id][k][tc] 
+						   +" Overflow: " +os[e.id]);
 			    }
 			}
 		    }
