@@ -800,6 +800,7 @@ public class CognitiveRadioTopologyControl {
     static List<Edge> find_E(Double[] o, Double O, Collection edges) {
 	Vector<Edge> E = new Vector<Edge>();
 	for(int i = 0; i < o.length; i++) {
+	    //	    System.out.println(o[i] + " <?> " + O);
 	    if (O.compareTo(o[i]) == 0) {
 		for(Object oe: edges) {
 		    Edge e = (Edge)oe;
@@ -846,13 +847,28 @@ public class CognitiveRadioTopologyControl {
 
 	    innerloop:
 	    for(Object oa: E) {
+		System.out.print("A: ");
+		for(int i = 0; i < network.numChannels*3; i++) {
+		    System.out.print(A[i]+" ");
+		}
+		System.out.print("\n");
+		
 		System.out.println("Checking edge "+oa);
 		Edge e = (Edge)oa;
 		// check each existing channel
-		for(int i = 0; i < A.length; i++) {
+		//		for(int i = 0; i < A.length; i++) {
+		for(int i = 0; i < 1; i++) {
 		    if (A[i] == 1) {
 			System.out.println("Checking channel "+i);
 			y[e.id][i] = 1;
+			System.out.println("y:");
+			for(int ii = 0; ii < network.getEdgeCount(); ii++) {
+			    System.out.print(ii+": ");
+			    for(int j = 0; j < network.numChannels*3; j++) {
+				System.out.print(y[ii][j]+" ");
+			    }
+			    System.out.print("\n");
+			}
 			o1 = makeILP(options, network, DEMAND, NUM_PATHS,
 				     demand1, demand2, paths, spaths, 
 				     clique_list, y);
@@ -878,7 +894,6 @@ public class CognitiveRadioTopologyControl {
 
 		System.out.println("No existing channels improve things.");
 		if (! foundimprovement) {
-		    System.out.println("9");
 		    for(int i = 0; i < A.length; i++) {
 			if(A[i] == 0) {
 			    System.out.println("Turning on channel: " + i);
@@ -1083,14 +1098,13 @@ public class CognitiveRadioTopologyControl {
 	    // Constraint 4
 	    for (Object zz : network.getEdges()) {
 		Edge e = (Edge) zz;
-		IloNumExpr lhs = cplex.numExpr();
+		IloLinearNumExpr lhs = cplex.linearNumExpr();
 		for (int k = 0; k < network.numChannels * 3; k++) {
 		    for (int tc = 1; tc < MAX_CLIQUE_SIZE; tc++) {
-			lhs = cplex.sum(cplex.prod(D[e.id][k][tc], 
-						   x[e.id][k][tc]), lhs);
+			lhs.addTerm(D[e.id][k][tc], x[e.id][k][tc]);
 		    }
 		}
-		lhs = cplex.sum(o[e.id], lhs);
+		lhs.addTerm(1.0, o[e.id]);
 
 		if (options.backup) {
 		    IloNumExpr rhs = cplex.numExpr();
@@ -1134,7 +1148,6 @@ public class CognitiveRadioTopologyControl {
 	    }
 
 	    // Solve
-	    //	    cplex.exportModel("debug.lp");
 	    cplex.setOut(null);
 
 	    if (cplex.solve()) {
@@ -1148,14 +1161,14 @@ public class CognitiveRadioTopologyControl {
 		    for (int k = 0; k < network.numChannels * 3; k++) {
 			for (int tc = 1; tc < MAX_CLIQUE_SIZE; tc++) {
 			    double value = cplex.getValue(x[e.id][k][tc]);
-			    if (value > 0) {
-				sum += D[e.id][k][tc];
-				System.out.println("Edge: "+e.id
-						   +" Channel: "+k
-						   +" Throughput: "
-						   +D[e.id][k][tc] 
-						   +" Overflow: " +os[e.id]);
-			    }
+			    sum += D[e.id][k][tc];
+			    System.out.println("Edge: "+e.id
+					       +" Channel: "+k
+					       +" Clique Size: "+tc
+					       +" Throughput: "
+					       +D[e.id][k][tc]
+					       +" x "+value
+					       +" Overflow: "+os[e.id]);
 			}
 		    }
 		}

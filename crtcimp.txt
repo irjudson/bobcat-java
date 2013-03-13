@@ -1,0 +1,16 @@
+0. Set all y_ik = 0
+1. Outer Loop
+  A. Solve the LP
+    i. pull out o's and O
+    ii. find E: the set of edges e_i where o_i = O
+    iii. bool foundimprovement = false
+  B. for each e_i in E:
+    i. for each channel a in A such that y_ia = 0:
+       a. activate channel a on e_i (set y_ia = 1)
+       b. rerun the LP
+       c. pull out new o's, O
+       d. pull out E'
+       e. if |E'| < |E| || (|E'| = |E| && O' < O)
+          1. foundimprovement = true
+          2. goto Outer Loop
+  C. if ! foundimprovement, add a new channel a to A, goto Outer Loop
