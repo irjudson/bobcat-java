@@ -790,6 +790,7 @@ public class CognitiveRadioTopologyControl {
     static Double find_O(Double[] o) {
 	Double max = 0.0d;
 	for(int i = 0; i < o.length; i++) {
+	    System.out.println("|"+i+" : "+o[i]+"|");
 	    if (o[i] > max) {
 		max = o[i];
 	    }
@@ -800,7 +801,6 @@ public class CognitiveRadioTopologyControl {
     static List<Edge> find_E(Double[] o, Double O, Collection edges) {
 	Vector<Edge> E = new Vector<Edge>();
 	for(int i = 0; i < o.length; i++) {
-	    //	    System.out.println(o[i] + " <?> " + O);
 	    if (O.compareTo(o[i]) == 0) {
 		for(Object oe: edges) {
 		    Edge e = (Edge)oe;
@@ -912,6 +912,8 @@ public class CognitiveRadioTopologyControl {
 			    HashMap paths, HashMap spaths,
 			    HashMap clique_list, Integer[][] ys) {
 	Double[] os = new Double[network.getEdgeCount()];
+	Double eps = 0.01d;
+
 	// Build ILP
 	try {
 	    Double cplexTotal = Double.MAX_VALUE;
@@ -960,9 +962,6 @@ public class CognitiveRadioTopologyControl {
 				       "o("+e.id+")");
 	    }
 	    
-	    // O 
-	    IloNumVar O = cplex.numVar(0.0, Double.MAX_VALUE, "O");
-	    
 	    // d
 	    IloNumVar[] d1 = new IloNumVar[NUM_PATHS];
 	    IloNumVar[] d2 = new IloNumVar[NUM_PATHS];
@@ -984,7 +983,7 @@ public class CognitiveRadioTopologyControl {
 	    // Objective function in Equation 3 - Minimize Overall
 	    // Channel Costs
 
-	    IloLinearNumExpr cost = cplex.linearNumExpr();
+	    IloLinearNumExpr O = cplex.linearNumExpr();
 
 	    // Costs for ubiquity hardware:
 	    // 900MHz - $170, 2.4GHz - $85, 5GHz - $290
@@ -1015,6 +1014,10 @@ public class CognitiveRadioTopologyControl {
 		}
 	    }
 
+	    for(Object ix: network.getEdges()) {
+		Edge e = (Edge)ix;
+		O.addTerm(eps, o[e.id]);
+	    }
 	    IloObjective objective = cplex.minimize(O);
 
 	    // Objective
@@ -1156,17 +1159,14 @@ public class CognitiveRadioTopologyControl {
 		Collections.sort(elist2);
 		for (Object ol : elist2) {
 		    Edge e = (Edge) ol;
-		    double sum = 0.0;
 		    os[e.id] = cplex.getValue(o[e.id]);
 		    for (int k = 0; k < network.numChannels * 3; k++) {
 			for (int tc = 1; tc < MAX_CLIQUE_SIZE; tc++) {
 			    double value = cplex.getValue(x[e.id][k][tc]);
-			    sum += D[e.id][k][tc];
 			    System.out.println("Edge: "+e.id
 					       +" Channel: "+k
 					       +" Clique Size: "+tc
-					       +" Throughput: "
-					       +D[e.id][k][tc]
+					       +" Throughput: "+D[e.id][k][tc]
 					       +" x "+value
 					       +" Overflow: "+os[e.id]);
 			}
