@@ -790,7 +790,7 @@ public class CognitiveRadioTopologyControl {
     static Double find_O(Double[] o) {
 	Double max = 0.0d;
 	for(int i = 0; i < o.length; i++) {
-	    System.out.println("|"+i+" : "+o[i]+"|");
+	    //	    System.out.println("|"+i+" : "+o[i]+"|");
 	    if (o[i] > max) {
 		max = o[i];
 	    }
@@ -813,6 +813,21 @@ public class CognitiveRadioTopologyControl {
 	return(E);
     }
 
+    static List<Edge> find_Es(Double[] o, Collection edges) {
+	Vector<Edge> E = new Vector<Edge>();
+	for(int i = 0; i < o.length; i++) {
+	    if (o[i] > 0.0) {
+		for(Object oe: edges) {
+		    Edge e = (Edge)oe;
+		    if (e.id == i) {
+			E.add(e);
+		    }
+		}
+	    }
+	}
+	return(E);
+    }
+
     static void findSln(CognitiveRadioTopologyControlOptions options, 
 			Network network, Double DEMAND, int NUM_PATHS,
 			Double[] demand1, Double[]  demand2,
@@ -820,9 +835,10 @@ public class CognitiveRadioTopologyControl {
 			HashMap clique_list) {
 	Double O = 0.001, O1 = 0.0d;
 	Double[] o, o1;
-	List<Edge> E, E1;
+	List<Edge> E, E1, aE, aE1;
 	Integer[] A = new Integer[network.numChannels*3];
 	Integer[][] y = new Integer[network.getEdgeCount()][network.numChannels*3];
+	int achannel = 0;
 
 	for(int i = 0; i < A.length; i++) {
 	    A[i] = 0;
@@ -838,16 +854,17 @@ public class CognitiveRadioTopologyControl {
 	// loop until O == 0
 	int outer_counter = 0;
 	outerloop:
-	while(O > 0) {
+	while(O.compareTo(0.0d) != 0) {
 	    o = makeILP(options, network, DEMAND, NUM_PATHS,
 			demand1, demand2, paths, spaths, clique_list, y);
 	    O = find_O(o);
 	    E = find_E(o, O, network.getEdges());
+	    aE = find_Es(o, network.getEdges());
 	    Boolean foundimprovement = false;
 
 	    innerloop:
 	    for(Object oa: E) {
-		System.out.print("A: ");
+		System.out.print("--> A: ");
 		for(int i = 0; i < network.numChannels*3; i++) {
 		    System.out.print(A[i]+" ");
 		}
@@ -856,50 +873,46 @@ public class CognitiveRadioTopologyControl {
 		System.out.println("Checking edge "+oa);
 		Edge e = (Edge)oa;
 		// check each existing channel
-		//		for(int i = 0; i < A.length; i++) {
-		for(int i = 0; i < 1; i++) {
-		    if (A[i] == 1) {
-			System.out.println("Checking channel "+i);
+		for(int i = 0; i < achannel; i++) {
+		    if (e.channels[i] > 0.0d) {
+			System.out.println("  Checking channel: "+i);
 			y[e.id][i] = 1;
-			System.out.println("y:");
-			for(int ii = 0; ii < network.getEdgeCount(); ii++) {
-			    System.out.print(ii+": ");
-			    for(int j = 0; j < network.numChannels*3; j++) {
-				System.out.print(y[ii][j]+" ");
-			    }
-			    System.out.print("\n");
-			}
+			// System.out.println("y:");
+			// for(int ii = 0; ii < network.getEdgeCount(); ii++) {
+			//     System.out.print(ii+": ");
+			//     for(int j = 0; j < network.numChannels*3; j++) {
+			// 	System.out.print(y[ii][j]+" ");
+			//     }
+			//     System.out.print("\n");
+			// }
 			o1 = makeILP(options, network, DEMAND, NUM_PATHS,
 				     demand1, demand2, paths, spaths, 
 				     clique_list, y);
 			O1 = find_O(o1);
-			E1 = find_E(o1, O1, network.getEdges());
+			aE1 = find_Es(o1, network.getEdges());
 
-			System.out.println("E: "+E.size());
-			System.out.println("E1: "+E1.size());
-			System.out.println("O: "+o[e.id]);
-			System.out.println("O1: "+o1[e.id]);
+			System.out.println("\tE: "+aE.size());
+			System.out.println("\tE1: "+aE1.size());
+			System.out.println("\tO: "+O);
+			System.out.println("\tO1: "+O1);
 
-			if (E1.size()<E.size() 
-			    || (E1.size()==E.size() && O1 < O)) {
-			    System.out.println("Yep, going back to the start.");
+			if (aE1.size() < aE.size() || O1 < O) {
+			    O = O1;
 			    foundimprovement = true;
 			    break innerloop;
 			} else {
-			    System.out.println("Nope, checking next channel.");
 			    y[e.id][i] = 0;
 			}
 		    }
 		}
 
-		System.out.println("No existing channels improve things.");
 		if (! foundimprovement) {
-		    for(int i = 0; i < A.length; i++) {
-			if(A[i] == 0) {
-			    System.out.println("Turning on channel: " + i);
-			    A[i] = 1;
-			    break innerloop;
-			}
+		    if (achannel < network.numChannels*3) {
+			System.out.println("Turning on channel: " + achannel);
+			A[achannel] = 1;
+			achannel += 1;
+		    } else {
+			break outerloop;
 		    }
 		}
 	    }
@@ -983,7 +996,8 @@ public class CognitiveRadioTopologyControl {
 	    // Objective function in Equation 3 - Minimize Overall
 	    // Channel Costs
 
-	    IloLinearNumExpr O = cplex.linearNumExpr();
+	    IloNumVar O = cplex.numVar(0.0, Double.MAX_VALUE, "O");
+	    IloLinearNumExpr cost = cplex.linearNumExpr();
 
 	    // Costs for ubiquity hardware:
 	    // 900MHz - $170, 2.4GHz - $85, 5GHz - $290
@@ -1016,9 +1030,11 @@ public class CognitiveRadioTopologyControl {
 
 	    for(Object ix: network.getEdges()) {
 		Edge e = (Edge)ix;
-		O.addTerm(eps, o[e.id]);
+		cost.addTerm(eps, o[e.id]);
 	    }
-	    IloObjective objective = cplex.minimize(O);
+	    cost.addTerm(1.0, O);
+
+	    IloObjective objective = cplex.minimize(cost);
 
 	    // Objective
 	    cplex.add(objective);
@@ -1160,17 +1176,19 @@ public class CognitiveRadioTopologyControl {
 		for (Object ol : elist2) {
 		    Edge e = (Edge) ol;
 		    os[e.id] = cplex.getValue(o[e.id]);
-		    for (int k = 0; k < network.numChannels * 3; k++) {
-			for (int tc = 1; tc < MAX_CLIQUE_SIZE; tc++) {
-			    double value = cplex.getValue(x[e.id][k][tc]);
-			    System.out.println("Edge: "+e.id
-					       +" Channel: "+k
-					       +" Clique Size: "+tc
-					       +" Throughput: "+D[e.id][k][tc]
-					       +" x "+value
-					       +" Overflow: "+os[e.id]);
-			}
-		    }
+		    // for (int k = 0; k < network.numChannels * 3; k++) {
+		    // 	for (int tc = 1; tc < MAX_CLIQUE_SIZE; tc++) {
+		    // 	    double value = cplex.getValue(x[e.id][k][tc]);
+		    // 	    if (value > 0.0 || os[e.id] > 0.0) {
+		    // 		System.out.println("Edge: "+e.id
+		    // 				   +" Channel: "+k
+		    // 				   +" Clique Size: "+tc
+		    // 				   +" Throughput: "+D[e.id][k][tc]
+		    // 				   +" x "+value
+		    // 				   +" Overflow: "+os[e.id]);
+		    // 	    }
+		    // 	}
+		    // }
 		}
 	    } else {
 		System.out.println("Couldn't solve problem!");
