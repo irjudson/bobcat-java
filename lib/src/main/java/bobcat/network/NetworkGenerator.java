@@ -20,6 +20,7 @@ public class NetworkGenerator<V, E> implements GraphGenerator<V, E> {
     public Factory<Network<V, E>> networkFactory;
     public Factory<V> vertexFactory;
     public Factory<E> edgeFactory;
+    public boolean quick = false;
 
     /**
      * Creates an instance with the specified factories and specifications.
@@ -34,7 +35,8 @@ public class NetworkGenerator<V, E> implements GraphGenerator<V, E> {
     public NetworkGenerator(Factory<Network<V, E>> networkFactory,
                             Factory<V> vertexFactory, Factory<E> edgeFactory,
                             int numRelays, int numSubscribers,
-                            double width, double height, Random random) {
+                            double width, double height, Random random, 
+			    boolean quick) {
         this.networkFactory = networkFactory;
         this.vertexFactory = vertexFactory;
         this.edgeFactory = edgeFactory;
@@ -43,6 +45,7 @@ public class NetworkGenerator<V, E> implements GraphGenerator<V, E> {
         this.width = width;
         this.height = height;
         this.random = random;
+	this.quick = quick;
     }
 
     public NetworkGenerator(Factory<Network<V, E>> networkFactory,
@@ -127,29 +130,31 @@ public class NetworkGenerator<V, E> implements GraphGenerator<V, E> {
                 }
             }
         }
-
-        // Calculate interference and zero out channels (primary interference)
-        for (Vertex v1 : network.subList) {
-            v1.interferenceChannel = random.nextInt(network.numChannels * 3);
-            double range = 0.0d;
-            if (v1.interferenceChannel > 0
+	
+	if(!this.quick) {
+	    // Calculate interference and zero out channels (primary interference)
+	    for (Vertex v1 : network.subList) {
+		v1.interferenceChannel = random.nextInt(network.numChannels * 3);
+		double range = 0.0d;
+		if (v1.interferenceChannel > 0
                     && v1.interferenceChannel < network.numChannels) {
-                range = 30.8;
-            } else if (v1.interferenceChannel >= 0 + network.numChannels &&
-                    v1.interferenceChannel < 2 * network.numChannels) {
-                range = 9.0;
-            } else if (v1.interferenceChannel >= 0 + 2 * network.numChannels &&
-                    v1.interferenceChannel < 3 * network.numChannels) {
-                range = 3.6;
-            }
-            for (Vertex v2 : network.relayList) {
-                if (v1.distanceTo(v1) < range) {
-                    for (E e : network.getIncidentEdges((V) v2)) {
-                        ((Edge) e).channels[v1.interferenceChannel] = 0.0d;
-                    }
-                }
-            }
-        } 
+		    range = 30.8;
+		} else if (v1.interferenceChannel >= 0 + network.numChannels &&
+			   v1.interferenceChannel < 2 * network.numChannels) {
+		    range = 9.0;
+		} else if (v1.interferenceChannel >= 0 + 2 * network.numChannels &&
+			   v1.interferenceChannel < 3 * network.numChannels) {
+		    range = 3.6;
+		}
+		for (Vertex v2 : network.relayList) {
+		    if (v1.distanceTo(v1) < range) {
+			for (E e : network.getIncidentEdges((V) v2)) {
+			    ((Edge) e).channels[v1.interferenceChannel] = 0.0d;
+			}
+		    }
+		}
+	    } 
+	}
 
         // This is the conflict graph
         network.interferes = new boolean[network.getEdgeCount() + 1][network.getEdgeCount() + 1][network.numChannels * 3 + 1];
