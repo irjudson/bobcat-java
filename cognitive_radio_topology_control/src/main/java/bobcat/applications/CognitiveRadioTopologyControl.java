@@ -23,9 +23,11 @@ public class CognitiveRadioTopologyControl {
 
     static int MAX_CLIQUE_SIZE = 4;
     static IloCplex cplex2 = null;
-    static Vector<IloRange> r = new Vector<IloRange>();
+    static IloRange[][] rys = null;
     static IloNumVar[] oi = null;
     static IloIntVar[][] y = null;
+    static int gc = 0;
+
     public static Boolean grows_clique(HashSet clique, Edge edge, 
 				       Network network, int channel) {
 	if (clique.size() > network.getEdgeCount()) { return (false); }
@@ -842,16 +844,20 @@ public class CognitiveRadioTopologyControl {
 	List<Edge> E, E1, aE, aE1;
 	Integer[] A = new Integer[network.numChannels*3];
 	Integer[][] y = new Integer[network.getEdgeCount()][network.numChannels*3];
+	Integer[][] oy = new Integer[network.getEdgeCount()][network.numChannels*3];
+	Double[] os = new Double[network.getEdgeCount()];
+
 	int achannel = 0;
 
 	for(int i = 0; i < A.length; i++) {
 	    A[i] = 0;
 	}
 
-	// Set all y_ik = 0
+	// Set all y_ik = 0, oy_ik to -1 (to trigger settings)
 	for(int i = 0; i < network.getEdgeCount(); i++) {
 	    for(int j = 0; j < network.numChannels*3; j++) {
 		y[i][j] = 0;
+		oy[i][j] = -1;
 	    }
 	}
 	
@@ -860,7 +866,7 @@ public class CognitiveRadioTopologyControl {
 	outerloop:
 	while(O.compareTo(0.0d) != 0) {
 	    o = makeILP(options, network, DEMAND, NUM_PATHS,
-			demand1, demand2, paths, spaths, clique_list, y);
+			demand1, demand2, paths, spaths, clique_list, y, oy, os);
 	    O = find_O(o);
 	    E = find_E(o, O, network.getEdges());
 	    aE = find_Es(o, network.getEdges());
@@ -888,9 +894,9 @@ public class CognitiveRadioTopologyControl {
 		// check each existing channel
 		for(int i = 0; i < achannel; i++) {
 		    if (e.channels[i] > 0.0d) {
-			if (options.verbose) {
-			    System.out.println("Edge: "+e.id+" Checking Channel: "+i);
-			}
+			//			if (options.verbose) {
+			    System.out.println("Edge: "+e+" Checking Channel: "+i);
+			    //			}
 			// Don't check if we already fixed it
 			if (y[e.id][i] == 0) { 
 			    y[e.id][i] = 1;
@@ -906,7 +912,7 @@ public class CognitiveRadioTopologyControl {
 			    }
 			    o1 = makeILP(options, network, DEMAND, NUM_PATHS,
 					 demand1, demand2, paths, spaths, 
-					 clique_list, y);
+					 clique_list, y, oy, os);
 			    O1 = find_O(o1);
 			    E1 = find_E(o1, O1, network.getEdges());
 			    aE1 = find_Es(o1, network.getEdges());
@@ -919,9 +925,9 @@ public class CognitiveRadioTopologyControl {
 				System.out.println("\tO: "+O);
 				System.out.println("\tO1: "+O1);
 			    
-				for(int ii = 0; ii < network.getEdgeCount(); ii++) {
-				    System.out.println("Edge: "+ii+" Overflow: "+o1[ii]);
-				}
+				// for(int ii = 0; ii < network.getEdgeCount(); ii++) {
+				//     System.out.println("Edge: "+ii+" Overflow: "+o1[ii]);
+				// }
 			    }
 			    if (E1.size() < E.size() || O1 < O || aE1.size() < aE.size()) {
 				O = O1;
@@ -1012,9 +1018,10 @@ public class CognitiveRadioTopologyControl {
 			    Network network, Double DEMAND, int NUM_PATHS,
 			    Double[] demand1, Double[]  demand2,
 			    HashMap paths, HashMap spaths,
-			    HashMap clique_list, Integer[][] ys) {
+			    HashMap clique_list, Integer[][] ys, 
+			    Integer[][] oys, Double[] os) {
+	long startTime = System.nanoTime();
 
-	Double[] os = new Double[network.getEdgeCount()];
 	if (oi == null) {
 	    oi = new IloNumVar[network.getEdgeCount()];		
 	}
@@ -1256,41 +1263,56 @@ public class CognitiveRadioTopologyControl {
 		}
 	    }
 
+	    // read debug?.lp
+	    // read debug?.mst
+	    // conflict 1
+	    // display conflict all
+	    
+	    //cplex2.addMIPStart("debug"+gc);
+	    //cplex2.writeMIPStart("debug"+gc+".mst");
+
+	    if(rys == null) {
+		rys = new IloRange[network.getEdgeCount()][network.numChannels*3];
+	    }
+
 	    // Pin y's
 	    for(int i = 0; i < network.getEdgeCount(); i++) {
 		for (int j = 0; j < network.numChannels*3; j++) {
-		    IloRange s = cplex2.addEq(y[i][j], ys[i][j]);
-		    //System.out.println("Adding constraint: "+ s);
-		    r.add(s);
+		    // cppy check against old ones
+		    if (ys[i][j] != oys[i][j]) {
+			y[i][j].setMax(ys[i][j]);
+			y[i][j].setMin(ys[i][j]);
+			oys[i][j] = ys[i][j];
+		    }
 		}
 	    }
+
+	    //cplex2.exportModel("debug"+gc+".lp");
+	    //gc += 1;
 
 	    // Solve
 	    cplex2.setOut(null);
+	    
+	    boolean solved = cplex2.solve();
 
-
-	    if (cplex2.solve()) {
-		cplexTotal = cplex2.getObjValue();
-		List<Edge> elist2 = new ArrayList<Edge>(network.getEdges());
-		Collections.sort(elist2);
-		for (Object ol : elist2) {
-		    Edge e = (Edge) ol;
-		    os[e.id] = cplex2.getValue(oi[e.id]);
-		}
-	    } else {
+	    cplexTotal = cplex2.getObjValue();
+	    List<Edge> elist2 = new ArrayList<Edge>(network.getEdges());
+	    Collections.sort(elist2);
+	    for (Object ol : elist2) {
+		Edge e = (Edge) ol;
+		os[e.id] = cplex2.getValue(oi[e.id]);
+	    }
+	    if(!solved) {
 		System.out.println("Couldn't solve problem!");
 	    }
 
-	    for(Object oiam : r) {
-		IloRange rp = (IloRange)oiam;
-		//System.out.println("Removing constraint: "+rp);
-		cplex2.remove(rp);
-	    }
-	    r.clear();
 	} catch (IloException e) {
 	    System.err.println("Concert exception '" + e + "' caught.");
 	}
 
+	long endTime = System.nanoTime();
+	long elapsed = endTime-startTime;
+	System.out.println("Ran makeILP in: "+(double)elapsed/1000000000.0+" seconds.");
 	return(os);
     }
 }
