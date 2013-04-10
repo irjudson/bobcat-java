@@ -2,12 +2,15 @@ package bobcat.applications;
 
 import bobcat.network.*;
 import bobcat.simulation.Draw;
+
 import edu.uci.ics.jung.algorithms.shortestpath.DijkstraShortestPath;
 import edu.uci.ics.jung.algorithms.shortestpath.PrimMinimumSpanningTree;
 import edu.uci.ics.jung.graph.Graph;
 import edu.uci.ics.jung.graph.util.Pair;
+
 import ilog.concert.*;
 import ilog.cplex.IloCplex;
+
 import org.apache.commons.collections15.Transformer;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
@@ -790,6 +793,9 @@ public class CognitiveRadioTopologyControl {
 	    } catch (IloException e) {
 		System.err.println("Concert exception '" + e + "' caught.");
 	    }
+	}
+	if (options.saveFile != null) {
+	    network.SaveNetwork(options.saveFile);
 	}
     }
 

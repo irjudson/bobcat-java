@@ -15,7 +15,6 @@ public class Edge implements Comparable {
     public Double[] channels;
     public Boolean isMarked = false;
 
-
     public int compareTo(Object otherEdge) throws ClassCastException {
         if(!(otherEdge instanceof Edge))
             throw new ClassCastException("An Edge object is expected.");
@@ -64,6 +63,16 @@ public class Edge implements Comparable {
         }
         String c = "{ " + StringUtils.join(active, ", ") + " }";
         return ("[" + Integer.toString(id) + "] " + dec.format(length) + " km " + c);
+    }
+
+    public String channelList() {
+        Vector active = new Vector();
+        for (int i = 0; i < channels.length; i++) {
+            if (channels[i] > 0.0) {
+                active.add(i);
+            }
+        }
+        return(StringUtils.join(active, " "));
     }
 
     double lookupThroughput(int frequency) {

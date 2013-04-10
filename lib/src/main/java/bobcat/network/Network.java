@@ -3,8 +3,16 @@ package bobcat.network;
 import edu.uci.ics.jung.graph.util.Pair;
 import edu.uci.ics.jung.graph.Graph;
 import edu.uci.ics.jung.graph.UndirectedSparseGraph;
+import edu.uci.ics.jung.io.GraphMLWriter;
+import edu.uci.ics.jung.io.GraphMLReader;
 
 import java.util.*;
+import java.io.IOException;
+import java.io.FileWriter;
+import java.io.PrintWriter;
+import java.awt.geom.Point2D;
+
+import org.apache.commons.collections15.Transformer;
 
 public class Network<V, E>
     extends UndirectedSparseGraph<V, E>
@@ -92,7 +100,7 @@ public class Network<V, E>
         return(null);
     }
 
-        public Vertex getVertex(int id) {
+    public Vertex getVertex(int id) {
         for (Object o: this.getVertices()) {
             Vertex v = (Vertex)o;
             if (v.id == id) {
@@ -157,10 +165,10 @@ public class Network<V, E>
                         if (i > 0 && i < this.numChannels) {
                             range = 30.8;
                         } else if (i >= 0 + this.numChannels &&
-                                i < 2 * this.numChannels) {
+				   i < 2 * this.numChannels) {
                             range = 9.0;
                         } else if (i >= 0 + 2 * this.numChannels &&
-                                i < 3 * this.numChannels) {
+				   i < 3 * this.numChannels) {
                             range = 3.6;
                         }
                         // System.out.println(" - "+i+" -> D: " + dist + " R: "+ range);
@@ -225,6 +233,44 @@ public class Network<V, E>
                 this.beamSet[i][k] = tmp.toArray(this.beamSet[i][k]);
             }
         }
+    }
+
+    public void SaveNetwork(String filename) {
+	try {
+	    GraphMLWriter<V,E> gmlw = new GraphMLWriter<V,E>();
+	    PrintWriter out = new PrintWriter(new FileWriter(filename));
+	    gmlw.setEdgeIDs(new Transformer<E, String>() {
+				public String transform(E e1) {
+				    Edge e = (Edge)e1;
+				    return(String.valueOf(e.id));
+				}
+			    });
+	    gmlw.addVertexData("x", null, "0.0",
+			       new Transformer<V, String>() {
+				   public String transform(V v1) {
+				       Vertex v = (Vertex)v1;
+				       return Double.toString(v.location.getX());
+				   }
+			       });
+ 
+	    gmlw.addVertexData("y", null, "0.0",
+			       new Transformer<V, String>() {
+				   public String transform(V v1) {
+				       Vertex v = (Vertex)v1;
+				       return Double.toString(v.location.getY());
+				   }
+			       });
+	    gmlw.addEdgeData("channels", null, "",
+			     new Transformer<E, String>() {
+				 public String transform(E e1) {
+				     Edge e = (Edge)e1;
+				     return(e.channelList());
+				 }
+			     });
+	    gmlw.save(this, out);
+	} catch (IOException e) {
+	    System.out.println("Couldn't save network: " + e.getMessage());
+	}
     }
 }
 

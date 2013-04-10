@@ -67,4 +67,12 @@ public class CognitiveRadioTopologyControlOptions {
     @Option(name = "-q", aliases = {"--quick"}, metaVar = "QUICK",
           usage = "run quick solve")
     public Boolean quick = false;
+
+    @Option(name = "-x", aliases = {"--saveFile"}, metaVar = "SAVEFILE",
+    usage = "Save Network to file.")
+    public String saveFile = null;
+
+    @Option(name = "-z", aliases = {"--loadFile"}, metaVar = "LOADFILE",
+    usage = "Load Network from file.")
+    public String loadFile = null;
 }

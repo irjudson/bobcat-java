@@ -68,11 +68,6 @@ public class DirectionalAntennas {
             knn.findKNearestNeighbors();
             knn.constructNewGraph();
             knnGraph = knn.getNewGraph();
-
-//        PrimsBasedAlgorithm prims = new PrimsBasedAlgorithm(options.nodeNumber,
-//                options.seed, options.squareSide, options.beams);
-//        prims.run();
-//        Vertex[] primsGraph = prims.getGraph();
         }
 
         if (! options.optOnly ) {
@@ -82,6 +77,7 @@ public class DirectionalAntennas {
             mstPlusGraph = mstPlus.getGraph();
 
         }
+
 
         if (options.graphs) {
             if (options.optimum) {
@@ -101,9 +97,6 @@ public class DirectionalAntennas {
             DrawRegion draw4 = new DrawRegion(mstPlusGraph,
                     options.squareSide, "The MSTPlus-based graph topology",
                     mstPlus.getTotalWeight());
-//            DrawRegion draw4 = new DrawRegion(primsGraph,
-//                    options.squareSide, "The Prim's-based graph topology",
-//                    prims.getTotalWeight());
         }
 
         String headers = "n,side,seed,sectors,neighbors,";
@@ -112,7 +105,6 @@ public class DirectionalAntennas {
         headers += "MinSpanTree Total,MinSpanTree Connected,MinSpanTree Fairness (in),MinSpanTree Fairness (out),";
         headers += "K-nearest Total,K-nearest Connected,K-nearest Fairness (in),K-nearest Fairness (out),";
         headers += "MSTPlus Total,MSTPlus Connected,MSTPlus Fairness (in),MSTPlus Fairness (out),";
-        //headers += "Prim's Total,Prim's Connected,Prim's Fairness (in),Prim's Fairness (out),";
         System.out.println(headers);
         if (options.optOnly) {
             System.out.println(options.nodeNumber + ","
@@ -192,11 +184,6 @@ public class DirectionalAntennas {
                     + Utilities.checkForConnectivity(mstPlusGraph) + ","
                     + Utilities.inFairness(mstPlusGraph) + ","
                     + Utilities.outFairness(mstPlusGraph) );
-            
-//                    + prims.getTotalWeight() + ","
-//                    + Utilities.checkForConnectivity(primsGraph) + ","
-//                    + Utilities.inFairness(primsGraph) + ","
-//                    + Utilities.outFairness(primsGraph));
         } else {
             System.out.println(options.nodeNumber + ","
                     + options.squareSide + ","
@@ -223,10 +210,6 @@ public class DirectionalAntennas {
                     + Utilities.checkForConnectivity(mstPlusGraph) + ","
                     + Utilities.inFairness(mstPlusGraph) + ","
                     + Utilities.outFairness(mstPlusGraph) );
-//                    + prims.getTotalWeight() + ","
-//                    + Utilities.checkForConnectivity(primsGraph) + ","
-//                    + Utilities.inFairness(primsGraph) + ","
-//                    + Utilities.outFairness(primsGraph));
         }
     }
 }

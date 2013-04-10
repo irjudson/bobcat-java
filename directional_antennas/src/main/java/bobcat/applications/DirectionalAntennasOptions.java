@@ -63,4 +63,12 @@ public class DirectionalAntennasOptions {
     @Option(name = "-O", aliases = {"--optOnly"}, metaVar = "OPTONLY",
     usage = "Run only the optimal algorithm.")
     public boolean optOnly = false;
+
+    @Option(name = "-x", aliases = {"--saveFile"}, metaVar = "SAVEFILE",
+    usage = "Save Network to file.")
+    public String saveFile = null;
+
+    @Option(name = "-z", aliases = {"--loadFile"}, metaVar = "LOADFILE",
+    usage = "Load Network from file.")
+    public String loadFile = null;
 }
