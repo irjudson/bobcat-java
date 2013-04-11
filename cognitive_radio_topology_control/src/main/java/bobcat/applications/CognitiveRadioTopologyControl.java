@@ -221,12 +221,17 @@ public class CognitiveRadioTopologyControl {
 						    options.subscribers, 
 						    options.width, 
 						    options.height, gen, 
+						    options.seed,
 						    options.channels, 
 						    options.channelProb,
 						    options.quick);
-
-	    network = networkGenerator.create();
-
+	    
+	    if (options.loadFile != null) {
+		network = Network.LoadNetwork(options.loadFile);
+		network.random = gen;
+	    } else {
+		network = networkGenerator.create();
+	    }
 	    Transformer<Edge, Double> pTransformer = new Transformer<Edge, Double>() {
 
 		public Double transform(Edge e) {

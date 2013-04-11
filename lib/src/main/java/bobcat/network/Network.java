@@ -2,13 +2,21 @@ package bobcat.network;
 
 import edu.uci.ics.jung.graph.util.Pair;
 import edu.uci.ics.jung.graph.Graph;
+import edu.uci.ics.jung.graph.Hypergraph;
 import edu.uci.ics.jung.graph.UndirectedSparseGraph;
+import edu.uci.ics.jung.io.GraphIOException;
 import edu.uci.ics.jung.io.GraphMLWriter;
-import edu.uci.ics.jung.io.GraphMLReader;
+import edu.uci.ics.jung.io.graphml.GraphMLReader2;
+import edu.uci.ics.jung.io.graphml.GraphMetadata;
+import edu.uci.ics.jung.io.graphml.NodeMetadata;
+import edu.uci.ics.jung.io.graphml.EdgeMetadata;
+import edu.uci.ics.jung.io.graphml.HyperEdgeMetadata;
 
 import java.util.*;
 import java.io.IOException;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
+import java.io.FileReader;
 import java.io.PrintWriter;
 import java.awt.geom.Point2D;
 
@@ -32,7 +40,15 @@ public class Network<V, E>
     public static int numChannels;
     public static double channelProb;
     public Random random;
+    public long seed;
     public boolean[][][] interferes;
+
+    public Network(double size, int numChannels, int numEdges) {
+	this.width = size;
+	this.height = size;
+	this.numChannels = numChannels;
+	this.interferes = new boolean[numEdges + 1][numEdges + 1][numChannels * 3 + 1];
+    }
 
     public Network(double width, double height, int theta, int channels) {
         this.width = width;
@@ -49,24 +65,30 @@ public class Network<V, E>
     public static NetworkGenerator getGenerator(int numRelays, 
 						int numSubscribers, 
 						int sectors, double width, 
-						double height, Random random, 
+						double height, Random random,
+						long seed,
 						int theta, double meanq, 
 						double slotlen, int channels, 
 						double prob, boolean quick) {
 
         NetworkGenerator gen = new NetworkGenerator(new NetworkFactory(width, height, theta, channels),
                                                     new VertexFactory(width, height, sectors, meanq, random),
-                                                    new EdgeFactory(), numRelays, numSubscribers, width, height, random, quick);
+                                                    new EdgeFactory(), numRelays, numSubscribers, width, height, 
+						    random, quick);
         thetaSet[0] = theta;
         meanQueueLength = meanq;
         timeslotLength = slotlen;
         numChannels = channels;
         channelProb = prob;
+	seed = seed;
         return (gen);
     }
 
-    public static NetworkGenerator getGenerator(int numRelays, int numSubscribers, int sectors, double width, double height, 
-                                                long seed, int theta, double meanq, double slotlen, int channels, double prob) {
+    public static NetworkGenerator getGenerator(int numRelays, int numSubscribers, 
+						int sectors, double width, 
+						double height, long seed, int theta, 
+						double meanq, double slotlen, 
+						int channels, double prob) {
 
         NetworkGenerator gen = new NetworkGenerator(new NetworkFactory(width, height, theta, channels),
                                                     new VertexFactory(width, height, sectors, meanq, seed),
@@ -76,6 +98,7 @@ public class Network<V, E>
         timeslotLength = slotlen;
         numChannels = channels;
         channelProb = prob;
+	seed = seed;
         return (gen);
     }
 
@@ -87,6 +110,7 @@ public class Network<V, E>
                                                     new EdgeFactory(), numRelays, numSubscribers, width, height, seed);
         numChannels = channels;
         channelProb = prob;
+	seed = seed;
         return (gen);
     }
 
@@ -112,8 +136,9 @@ public class Network<V, E>
 
     public static NetworkGenerator getGenerator(int relays, int subscribers, 
                                                 double width, double height, 
-                                                Random random, int channels, 
-						double prob, boolean quick) {
+                                                Random random, long seed, 
+						int channels, double prob, 
+						boolean quick) {
         NetworkGenerator gen = new NetworkGenerator(new NetworkFactory(width, 
                                                                        height, 
                                                                        channels),
@@ -121,6 +146,7 @@ public class Network<V, E>
                                                     new EdgeFactory(), relays, subscribers, width, height, random, quick);
         numChannels = channels;
         channelProb = prob;
+	seed = seed;
         return (gen);
     }
 
@@ -235,6 +261,75 @@ public class Network<V, E>
         }
     }
 
+    public static Network LoadNetwork(String filename) {
+	Network n = null;
+	try {
+	    FileReader in = new FileReader(filename);
+	    Transformer<GraphMetadata, Graph<Vertex, Edge>> gTrans = new Transformer<GraphMetadata, Graph<Vertex, Edge>>() { 
+		public Graph<Vertex, Edge> transform(GraphMetadata metadata) {
+		    double size = Double.parseDouble(metadata.getProperty("size"));
+		    int channels = Integer.parseInt(metadata.getProperty("channels"));
+		    int edgeCount = Integer.parseInt(metadata.getProperty("numEdges"));
+		    return(new Network(size, channels, edgeCount));
+		}
+	    };
+ 	    Transformer<NodeMetadata, Vertex> vTrans = new Transformer<NodeMetadata, Vertex>(){ 
+ 		public Vertex transform(NodeMetadata metadata) {
+		    int i = Integer.parseInt(metadata.getId());
+		    double x = Double.parseDouble(metadata.getProperty("x"));
+		    double y = Double.parseDouble(metadata.getProperty("y"));
+		    Vertex v = new Vertex(i,x,y);
+		    v.type = Integer.parseInt(metadata.getProperty("type")); 
+		    return(v);
+ 		}
+ 	    };
+ 	    Transformer<EdgeMetadata, Edge> eTrans = new Transformer<EdgeMetadata, Edge>(){ 
+ 		public Edge transform(EdgeMetadata metadata) {
+		    int numChannels = Integer.parseInt(metadata.getProperty("numChannels"));
+		    int i = Integer.parseInt(metadata.getId());
+		    Edge e = new Edge(i);
+		    e.channels = new Double[numChannels];
+		    for(int ij = 0; ij < numChannels; ij++) {
+			e.channels[ij] = 0.0d;
+		    }
+		    String enc = metadata.getProperty("channels");
+		    String[] chs = enc.split(" ");
+		    for(Object cha: chs) {
+			String as = (String)cha;
+			String[] a = as.split(":");
+			int idx = Integer.parseInt(a[0]);
+			double thpt = Double.parseDouble(a[1]);
+			e.channels[idx] = thpt;
+		    }
+		    e.capacity = Double.parseDouble(metadata.getProperty("capacity"));
+		    e.length = Double.parseDouble(metadata.getProperty("length"));
+		    e.weight = Double.parseDouble(metadata.getProperty("weight"));
+		    return(e);
+ 		}
+ 	    };
+ 	    Transformer<HyperEdgeMetadata,Edge> hTrans = new Transformer<HyperEdgeMetadata,Edge>(){ 
+ 		public Edge transform(HyperEdgeMetadata metadata) {
+		    int i = Integer.parseInt(metadata.getId());
+		    return(new Edge(i));
+ 		}
+ 	    };
+
+	    GraphMLReader2<Graph<Vertex, Edge>, Vertex, Edge> gmlr =
+		new GraphMLReader2<Graph<Vertex, Edge>, Vertex, Edge>(in, 
+								      gTrans, vTrans, 
+								      eTrans, hTrans);
+
+	    try {
+		n = (Network)gmlr.readGraph();
+	    } catch (GraphIOException e) {}
+	} catch (FileNotFoundException e) {}
+	n.configure();
+	return(n);
+    }
+
+    public void configure() {
+    }
+
     public void SaveNetwork(String filename) {
 	try {
 	    GraphMLWriter<V,E> gmlw = new GraphMLWriter<V,E>();
@@ -245,6 +340,13 @@ public class Network<V, E>
 				    return(String.valueOf(e.id));
 				}
 			    });
+	    gmlw.addVertexData("type", null, "2",
+			       new Transformer<V, String>() {
+				   public String transform(V v1) {
+				       Vertex v = (Vertex)v1;
+				       return Integer.toString(v.type);
+				   }
+			       });
 	    gmlw.addVertexData("x", null, "0.0",
 			       new Transformer<V, String>() {
 				   public String transform(V v1) {
@@ -252,7 +354,6 @@ public class Network<V, E>
 				       return Double.toString(v.location.getX());
 				   }
 			       });
- 
 	    gmlw.addVertexData("y", null, "0.0",
 			       new Transformer<V, String>() {
 				   public String transform(V v1) {
@@ -267,6 +368,56 @@ public class Network<V, E>
 				     return(e.channelList());
 				 }
 			     });
+	    gmlw.addEdgeData("numChannels", null, "",
+			     new Transformer<E, String>() {
+				 public String transform(E e1) {
+				     Edge e = (Edge)e1;
+				     return(String.valueOf(e.channels.length));
+				 }
+			     });
+	    gmlw.addEdgeData("length", null, "",
+			     new Transformer<E, String>() {
+				 public String transform(E e1) {
+				     Edge e = (Edge)e1;
+				     return(String.valueOf(e.length));
+				 }
+			     });
+	    gmlw.addEdgeData("capacity", null, "",
+			     new Transformer<E, String>() {
+				 public String transform(E e1) {
+				     Edge e = (Edge)e1;
+				     return(String.valueOf(e.capacity));
+				 }
+			     });
+	    gmlw.addEdgeData("weight", null, "",
+			     new Transformer<E, String>() {
+				 public String transform(E e1) {
+				     Edge e = (Edge)e1;
+				     return(String.valueOf(e.weight));
+				 }
+			     });
+ 	    gmlw.addGraphData("size", null, "",
+ 			      new Transformer<Hypergraph<V,E>, String>() {
+				  public String transform(Hypergraph<V,E> g) {
+ 				      Network n = (Network)g;
+ 				      return(String.valueOf(n.width));
+ 				  }
+ 			      });
+ 	    gmlw.addGraphData("channels", null, "",
+ 			      new Transformer<Hypergraph<V,E>, String>() {
+				  public String transform(Hypergraph<V,E> g) {
+ 				      Network n = (Network)g;
+ 				      return(String.valueOf(n.numChannels));
+ 				  }
+ 			      });
+ 	    gmlw.addGraphData("numEdges", null, "",
+ 			      new Transformer<Hypergraph<V,E>, String>() {
+				  public String transform(Hypergraph<V,E> g) {
+ 				      Network n = (Network)g;
+ 				      return(String.valueOf(n.getEdgeCount()));
+ 				  }
+ 			      });
+
 	    gmlw.save(this, out);
 	} catch (IOException e) {
 	    System.out.println("Couldn't save network: " + e.getMessage());

@@ -44,12 +44,12 @@ public class Edge implements Comparable {
                 sum += channels[i];
             }
         }
-        return (sum);
+        return(sum);
     }
 
     public double bottleNeckWeight() {
         double max = channels.length * 45 * Math.pow(10, 6);
-        return (max - (1.0 * bottleNeckCapacity()));
+        return(max - (1.0 * bottleNeckCapacity()));
     }
 
     public String toString() {
@@ -66,13 +66,14 @@ public class Edge implements Comparable {
     }
 
     public String channelList() {
-        Vector active = new Vector();
+	String encoded = "";
         for (int i = 0; i < channels.length; i++) {
             if (channels[i] > 0.0) {
-                active.add(i);
+		double tp = channels[i];
+		encoded += i+":"+tp+" ";
             }
         }
-        return(StringUtils.join(active, " "));
+        return(encoded);
     }
 
     double lookupThroughput(int frequency) {

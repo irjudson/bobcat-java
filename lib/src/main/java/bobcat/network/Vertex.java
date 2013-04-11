@@ -11,12 +11,12 @@ import java.util.TreeMap;
 public class Vertex implements Comparable {
     public enum Type { GATEWAY, RELAYSTATION, SUBSCRIBERSTATION };
     public int     id;
+    public int     type;  // 0 - Gateway, 1 - RS, 2 - SS
     public int     sectors;
     public Point2D location;        
     // maps int sector -> array of vertices.
     public HashMap sectorMap;
     public int     activeSectors;
-    public int     type;  // 0 - Gateway, 1 - RS, 2 - SS
     public float   inThroughput;
     public float   outThroughput;
     public Vertex  preferredRelay;
@@ -57,6 +57,18 @@ public class Vertex implements Comparable {
         for(int i=0; i<sectors; i++) {
             this.sectorMap.put(i, new HashSet<Vertex>());
         }
+        location = new Point2D.Double(x,y);
+    }
+
+    /**
+     * @param id the id of the vertex
+     * @param sectors the number of sectors this node has
+     * @param x the x location of this vertex
+     * @param y the y location of this vertex
+     * @return Vertex a new vertex.
+     **/
+    public Vertex(int id, double x, double y) {
+        this.id = id;
         location = new Point2D.Double(x,y);
     }
 
