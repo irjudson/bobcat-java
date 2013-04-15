@@ -283,7 +283,7 @@ public class Vertex implements Comparable {
        else
            weight = 45 * Math.pow(10, 6);  // 45 Mb/s
 
-       System.out.println("Distance: " + distance + " TP: " + weight);
+       //System.out.println("Distance: " + distance + " TP: " + weight);
 
        return weight;
    }

@@ -55,24 +55,29 @@ public class Edge implements Comparable {
     public String toString() {
         DecimalFormat dec = new DecimalFormat("##.#");
         String delim = "";
+	String cl = "";
         Vector active = new Vector();
-        for (int i = 0; i < channels.length; i++) {
-            if (channels[i] > 0.0) {
-                active.add(i);
-            }
-        }
-        String c = "{ " + StringUtils.join(active, ", ") + " }";
-        return ("[" + Integer.toString(id) + "] " + dec.format(length) + " km " + c);
+	if (channels != null) {
+	    for (int i = 0; i < channels.length; i++) {
+		if (channels[i] > 0.0) {
+		    active.add(i);
+		}
+	    }
+	    cl = "{ " + StringUtils.join(active, ", ") + " }";
+	}
+	return ("[" + Integer.toString(id) + "] " + dec.format(length) + " km " + cl);
     }
 
     public String channelList() {
 	String encoded = "";
-        for (int i = 0; i < channels.length; i++) {
-            if (channels[i] > 0.0) {
-		double tp = channels[i];
-		encoded += i+":"+tp+" ";
-            }
-        }
+	if (channels != null) {
+	    for (int i = 0; i < channels.length; i++) {
+		if (channels[i] > 0.0) {
+		    double tp = channels[i];
+		    encoded += i+":"+tp+" ";
+		}
+	    }
+	}
         return(encoded);
     }
 

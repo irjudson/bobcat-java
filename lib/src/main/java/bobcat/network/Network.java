@@ -36,17 +36,20 @@ public class Network<V, E>
     public static double meanQueueLength;
     public static double timeslotLength;
     public static int[] thetaSet = new int[1]; // Brendan added, for now just two theta kept
+    // Vertex HashSet[numRelays][this.thetaSet.length]-HashSet
     public HashSet<Vertex>[][][] beamSet; // beamSet[i][k][l] = lth beam set for relay i, theta k
+    public HashSet<Integer>[][][] beamSet2;
     public static int numChannels;
     public static double channelProb;
     public Random random;
     public long seed;
     public boolean[][][] interferes;
 
-    public Network(double size, int numChannels, int numEdges) {
+    public Network(double size, int numChannels, int numEdges, int theta) {
 	this.width = size;
 	this.height = size;
 	this.numChannels = numChannels;
+        this.thetaSet[0] = theta;
 	this.interferes = new boolean[numEdges + 1][numEdges + 1][numChannels * 3 + 1];
     }
 
@@ -270,7 +273,34 @@ public class Network<V, E>
 		    double size = Double.parseDouble(metadata.getProperty("size"));
 		    int channels = Integer.parseInt(metadata.getProperty("channels"));
 		    int edgeCount = Integer.parseInt(metadata.getProperty("numEdges"));
-		    return(new Network(size, channels, edgeCount));
+		    int theta = Integer.parseInt(metadata.getProperty("theta"));
+		    Network n = new Network(size, channels, edgeCount, theta);
+		    n.meanQueueLength = Double.parseDouble(metadata.getProperty("meanQueueLength"));
+		    n.timeslotLength = Double.parseDouble(metadata.getProperty("timeslotLength"));
+		    int numRelays = Integer.parseInt(metadata.getProperty("numRelays"));
+// 		    String beamSetData = metadata.getProperty("beamSet");
+// 		    n.beamSet = new HashSet[numRelays][1][];
+// 		    n.beamSet2 = new HashSet[numRelays][1][];
+// 		    for(Object o : beamSetData.split(" ")) {
+// 			String e = (String)o;
+// 			String[] m = e.split(":");
+// 			int r = Integer.parseInt(m[0]);
+// 			int t = Integer.parseInt(m[1]);
+// 			String[] ss = m[2].split(";");
+// 			HashSet[] tmp = new HashSet[ss.length];
+// 			int idx2 = 0;
+// 			for(Object p : ss) {
+// 			    HashSet vs = new HashSet();
+// 			    String s1 = (String)p;
+// 			    for(Object q : s1.split(",")) {
+// 				vs.add(Integer.parseInt((String)q));
+// 			    }
+// 			    tmp[idx2] = vs;
+// 			    idx2 += 1;
+// 			}
+// 			n.beamSet2[r][t] = tmp;
+// 		    }
+		    return(n);
 		}
 	    };
  	    Transformer<NodeMetadata, Vertex> vTrans = new Transformer<NodeMetadata, Vertex>(){ 
@@ -280,6 +310,7 @@ public class Network<V, E>
 		    double y = Double.parseDouble(metadata.getProperty("y"));
 		    Vertex v = new Vertex(i,x,y);
 		    v.type = Integer.parseInt(metadata.getProperty("type")); 
+		    v.queueLength = Double.parseDouble(metadata.getProperty("queueLength"));
 		    return(v);
  		}
  	    };
@@ -292,14 +323,16 @@ public class Network<V, E>
 		    for(int ij = 0; ij < numChannels; ij++) {
 			e.channels[ij] = 0.0d;
 		    }
-		    String enc = metadata.getProperty("channels");
-		    String[] chs = enc.split(" ");
-		    for(Object cha: chs) {
-			String as = (String)cha;
-			String[] a = as.split(":");
-			int idx = Integer.parseInt(a[0]);
-			double thpt = Double.parseDouble(a[1]);
-			e.channels[idx] = thpt;
+		    if (numChannels > 0) {
+			String enc = metadata.getProperty("channels");
+			String[] chs = enc.split(" ");
+			for(Object cha: chs) {
+			    String as = (String)cha;
+			    String[] a = as.split(":");
+			    int idx = Integer.parseInt(a[0]);
+			    double thpt = Double.parseDouble(a[1]);
+			    e.channels[idx] = thpt;
+			}
 		    }
 		    e.capacity = Double.parseDouble(metadata.getProperty("capacity"));
 		    e.length = Double.parseDouble(metadata.getProperty("length"));
@@ -328,6 +361,51 @@ public class Network<V, E>
     }
 
     public void configure() {
+	int numRelays = 0;
+	int numSubs = 0;
+	int ri = 0;
+	int si = 0;
+	for(Object o : this.getVertices()) {
+	    Vertex v = (Vertex)o;
+	    if (v.type == 1) {
+		numRelays += 1;
+	    }
+	    if (v.type == 2) {
+		numSubs += 1;
+	    }
+	}
+	this.relays = new HashSet(numRelays);
+	this.relayList = new Vertex[numRelays];
+	this.subscribers = new HashSet(numSubs);
+	this.subList = new Vertex[numSubs];
+	for(Object o : this.getVertices()) {
+	    Vertex v = (Vertex)o;
+	    if (v.type == 1) {
+		this.relays.add(v);
+		this.relayList[ri] = v;
+		ri += 1;
+	    }
+	    if (v.type == 2) {
+		this.subscribers.add(v);
+		this.subList[si] = v;
+		si += 1;
+	    }
+	}
+
+// 	for(int i = 0; i < numRelays; i++) {
+// 	    for(int j = 0; j < this.thetaSet.length; j++) {
+// 		int n = this.beamSet2[i][j].length;
+// 		this.beamSet[i][j] = new HashSet[n];
+// 		for(int k = 0; k < n; k++) {
+// 		    HashSet<Vertex> t = new HashSet<Vertex>();
+// 		    for(int vid: this.beamSet2[i][j][k]) {
+// 			Vertex v = this.getVertex(vid);
+// 			t.add(v);
+// 		    }
+// 		    this.beamSet[i][j][k] = t;
+// 		}
+// 	    }
+// 	}
     }
 
     public void SaveNetwork(String filename) {
@@ -361,62 +439,134 @@ public class Network<V, E>
 				       return Double.toString(v.location.getY());
 				   }
 			       });
+
+	    gmlw.addVertexData("queueLength", null, "0.0",
+			       new Transformer<V, String>() {
+				   public String transform(V v1) {
+				       Vertex v = (Vertex)v1;
+				       return Double.toString(v.queueLength);
+				   }
+			       });
+
 	    gmlw.addEdgeData("channels", null, "",
-			     new Transformer<E, String>() {
+				 new Transformer<E, String>() {
 				 public String transform(E e1) {
 				     Edge e = (Edge)e1;
 				     return(e.channelList());
 				 }
 			     });
-	    gmlw.addEdgeData("numChannels", null, "",
+	    gmlw.addEdgeData("numChannels", null, "0",
 			     new Transformer<E, String>() {
 				 public String transform(E e1) {
 				     Edge e = (Edge)e1;
-				     return(String.valueOf(e.channels.length));
+				     if (e.channels != null) {
+					 return(String.valueOf(e.channels.length));
+				     } else {
+					 return("0");
+				     }
 				 }
 			     });
-	    gmlw.addEdgeData("length", null, "",
+	    gmlw.addEdgeData("length", null, "0.0",
 			     new Transformer<E, String>() {
 				 public String transform(E e1) {
 				     Edge e = (Edge)e1;
 				     return(String.valueOf(e.length));
 				 }
 			     });
-	    gmlw.addEdgeData("capacity", null, "",
+	    gmlw.addEdgeData("capacity", null, "0.0",
 			     new Transformer<E, String>() {
 				 public String transform(E e1) {
 				     Edge e = (Edge)e1;
 				     return(String.valueOf(e.capacity));
 				 }
 			     });
-	    gmlw.addEdgeData("weight", null, "",
+	    gmlw.addEdgeData("weight", null, "0.0",
 			     new Transformer<E, String>() {
 				 public String transform(E e1) {
 				     Edge e = (Edge)e1;
 				     return(String.valueOf(e.weight));
 				 }
 			     });
- 	    gmlw.addGraphData("size", null, "",
+
+ 	    gmlw.addGraphData("size", null, "0.0",
  			      new Transformer<Hypergraph<V,E>, String>() {
 				  public String transform(Hypergraph<V,E> g) {
  				      Network n = (Network)g;
  				      return(String.valueOf(n.width));
  				  }
  			      });
- 	    gmlw.addGraphData("channels", null, "",
+ 	    gmlw.addGraphData("channels", null, "0",
  			      new Transformer<Hypergraph<V,E>, String>() {
 				  public String transform(Hypergraph<V,E> g) {
  				      Network n = (Network)g;
  				      return(String.valueOf(n.numChannels));
  				  }
  			      });
- 	    gmlw.addGraphData("numEdges", null, "",
+ 	    gmlw.addGraphData("numEdges", null, "0",
  			      new Transformer<Hypergraph<V,E>, String>() {
 				  public String transform(Hypergraph<V,E> g) {
  				      Network n = (Network)g;
  				      return(String.valueOf(n.getEdgeCount()));
  				  }
  			      });
+ 	    gmlw.addGraphData("theta", null, "0",
+ 			      new Transformer<Hypergraph<V,E>, String>() {
+				  public String transform(Hypergraph<V,E> g) {
+ 				      Network n = (Network)g;
+ 				      return(String.valueOf(n.thetaSet[0]));
+ 				  }
+ 			      });
+ 	    gmlw.addGraphData("meanQueueLength", null, "0.0",
+ 			      new Transformer<Hypergraph<V,E>, String>() {
+				  public String transform(Hypergraph<V,E> g) {
+ 				      Network n = (Network)g;
+ 				      return(String.valueOf(n.meanQueueLength));
+ 				  }
+ 			      });
+ 	    gmlw.addGraphData("timeslotLength", null, "0.0",
+ 			      new Transformer<Hypergraph<V,E>, String>() {
+				  public String transform(Hypergraph<V,E> g) {
+ 				      Network n = (Network)g;
+ 				      return(String.valueOf(n.timeslotLength));
+ 				  }
+ 			      });
+	    gmlw.addGraphData("numRelays", null, "",
+			      new Transformer<Hypergraph<V,E>,String>() {
+				  public String transform(Hypergraph<V,E> g) {
+				      Network n = (Network)g;
+				      return(String.valueOf(n.relayList.length));
+				  }
+			      });
+// 	    gmlw.addGraphData("beamSet", null, "",
+// 			      new Transformer<Hypergraph<V,E>,String>() {
+// 				  public String transform(Hypergraph<V,E> g) {
+// 				      Network n = (Network)g;
+// 				      int numRelays = n.relayList.length;
+// 				      int tsl = n.thetaSet.length;
+// 				      String retval = "";
+// 				      for(int i = 0; i < numRelays; i++) {
+// 					  for (int j = 0; j < tsl; j++) {
+// 					      retval += i+":"+j+":";
+// 					      for(int k = 0; k < n.beamSet[i][j].length; k++) {
+// 						  int count = 0;
+// 						  for (Object o: n.beamSet[i][j][k]) {
+// 						      if (count != 0) {
+// 							  retval += ","+o;
+// 						      } else {
+// 							  retval += o;
+// 						      }
+// 						      count += 1;
+// 						  }
+// 						  if(k != n.beamSet[i][j].length-1) {
+// 						      retval += ";";
+// 						  }
+// 					      }
+// 					      retval += " ";
+// 					  }
+// 				      }
+// 				      return(retval);
+// 				  }
+// 			       });
 
 	    gmlw.save(this, out);
 	} catch (IOException e) {

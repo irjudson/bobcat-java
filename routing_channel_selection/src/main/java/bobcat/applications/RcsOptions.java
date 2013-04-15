@@ -49,4 +49,12 @@ public class RcsOptions {
   @Option(name = "-r", aliases = {"--rcs"}, metaVar = "RCS",
           usage = "Consider the best N paths in RCS calcuations.")
     public Integer consider = 10;
+
+    @Option(name = "-x", aliases = {"--saveFile"}, metaVar = "SAVEFILE",
+    usage = "Save Network to file.")
+    public String saveFile = null;
+
+    @Option(name = "-z", aliases = {"--loadFile"}, metaVar = "LOADFILE",
+    usage = "Load Network from file.")
+    public String loadFile = null;
 }

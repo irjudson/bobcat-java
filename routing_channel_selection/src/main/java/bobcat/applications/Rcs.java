@@ -200,7 +200,12 @@ public class Rcs {
         }
         options.subscribers = (3 * options.channels) / 2;
         networkGenerator = Network.getGenerator(options.relays, options.subscribers, options.width, options.height, options.seed, options.channels, options.channelProb);
-        network = networkGenerator.create();
+	if (options.loadFile != null) {
+	    network = Network.LoadNetwork(options.loadFile);
+	    network.random = networkGenerator.random;
+	} else {
+	    network = networkGenerator.create();
+	}
 
         Transformer<Edge, Double> wtTransformer = new Transformer<Edge, Double>() {
 
@@ -347,6 +352,10 @@ public class Rcs {
             drawing = new Draw(network, 1024, 768, "Routing and Channel Selection Application");
             drawing.draw();
         }
+
+	if (options.saveFile != null) {
+	    network.SaveNetwork(options.saveFile);
+	}
 
         for (int i = 0; i < options.iter; i++) {
             if (rcsThptDP[i] >= rcsThpt[i]) {

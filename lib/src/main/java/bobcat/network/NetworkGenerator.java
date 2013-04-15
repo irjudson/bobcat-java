@@ -206,10 +206,12 @@ public class NetworkGenerator<V, E> implements GraphGenerator<V, E> {
         network.relays = new HashSet(numRelays);
         network.subscribers = new HashSet(numSubscribers);
 
+	int vid = 0; int eid = 0;
         // Create the root at the center
         V root = this.vertexFactory.create();
         network.addVertex(root);
         Vertex center = (Vertex) root;
+	center.id = vid; vid++;
         network.gateway = center;
         center.type = 0;
         center.location.setLocation(network.width / 2, network.height / 2);
@@ -220,6 +222,7 @@ public class NetworkGenerator<V, E> implements GraphGenerator<V, E> {
         for (int i = 0; i < numRelays; i++) {
             V node = this.vertexFactory.create();
             Vertex n = (Vertex) node;
+	    n.id = vid; vid++;
             n.type = 1;
             // changed by Brendan so that 0 and numRelays-1 don't overlap
             double theta = (i * 360.0 / numRelays * Math.PI) / 180.0;
@@ -237,8 +240,10 @@ public class NetworkGenerator<V, E> implements GraphGenerator<V, E> {
                 double dist = Point.roundTwoDecimals(((Vertex) root).location.distance(((Vertex) vertex).location));
                 // Check for connectivity & throughput
                 E edge = edgeFactory.create();
-                ((Edge) edge).type = 0;
-                ((Edge) edge).length = dist;
+		Edge e = (Edge)edge;
+                e.type = 0;
+		e.id = eid; eid++;
+                e.length = dist;
                 network.addEdge(edge, root, vertex);
             }
         }
@@ -247,6 +252,7 @@ public class NetworkGenerator<V, E> implements GraphGenerator<V, E> {
         for (int i = 0; i < numSubscribers; i++) {
             V node = this.vertexFactory.create();
             Vertex v = (Vertex) node;
+	    v.id = vid; vid++;
             v.type = 2;
             // Mark this vertex as a client.
             network.addVertex(node);

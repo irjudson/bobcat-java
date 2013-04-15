@@ -5,6 +5,10 @@ import org.kohsuke.args4j.Option;
 public class BeamSchedulingOptions {
 
     // Execution stuff
+  @Option(name = "-d", aliases = {"--display"}, metaVar = "DISPLAY",
+          usage = "Draw the graphs in a window.")
+    public Boolean display = false;
+
   @Option(name = "-w", aliases = {"--width"}, metaVar = "WIDTH",
           usage = "Width of the simulation bounding box.")
     public double width = 20000.0;
@@ -48,4 +52,12 @@ public class BeamSchedulingOptions {
   @Option(name = "-p", aliases = {"--channelProb"}, metaVar = "CHANNELPROB",
          usage = "Specify the availability probability of each of channel.")
     public double channelProb  = 0.3;
+
+  @Option(name = "-x", aliases = {"--saveFile"}, metaVar = "SAVEFILE",
+	 usage = "Save Network to file.")
+    public String saveFile = null;
+
+  @Option(name = "-z", aliases = {"--loadFile"}, metaVar = "LOADFILE",
+	 usage = "Load Network from file.")
+    public String loadFile = null;
 }
