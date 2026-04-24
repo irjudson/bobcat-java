@@ -1,3 +1,9 @@
+> **Historical Project — PhD Thesis Work** — Wireless networking simulation toolkit (Java). Part of Ivan R. Judson's doctoral research. Preserved as a research reference.
+
+# Bobcat (Java)
+
+Wireless networking simulation toolkit written in Java. Developed to support doctoral thesis research on directional antenna networks and beam scheduling algorithms. The Python version lives in [bobcat](https://github.com/irjudson/bobcat).
+
 bobcat
 ======
 
